@@ -142,6 +142,7 @@
     <ClInclude Include="FlowSolver.h" />
     <ClInclude Include="FromOuterSparse\SparseMatrix.h" />
     <ClInclude Include="Configuration.h" />
+    <ClInclude Include="Extras.h" />
     <ClInclude Include="IterativeSolver.h" />
     <ClInclude Include="Variable.h" />
     <ClInclude Include="toolkit.h" />

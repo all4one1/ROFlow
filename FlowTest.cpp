@@ -988,7 +988,7 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 								Side side = Side::back;
 								if (i == 0 || i == nx - 1)
 									SZ = SZ * 0.5;
-								b[l] += half_border(u, l, side, Sz, hz, PhysCoef);
+								b[l] += half_border(u, l, side, SZ, hz, PhysCoef);
 								reduce(u, side, reduced);
 							}
 						}
@@ -1134,7 +1134,7 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 								Side side = Side::back;
 								if (j == 0 || j == ny - 1)
 									SZ = SZ * 0.5;
-								b[l] += half_border(u, l, side, Sz, hz, PhysCoef);
+								b[l] += half_border(u, l, side, SZ, hz, PhysCoef);
 								reduce(u, side, reduced);
 							}
 						}
@@ -1156,62 +1156,4 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 			}
 		}
 	}
-}
-
-
-void FlowSolver::form_rhs_navier_stockes_with_heat(double* b, bool reset)
-{
-	{
-		Velocity& u = ux;
-		Velocity& v = vx;
-		if (u.type == Component::x)
-		{
-			for (int k = 0; k < nz; k++) {
-				for (int j = 0; j < ny; j++) {
-					for (int i = 0; i <= nx; i++) {
-						int l = i + u.off * j + u.off2 * k;
-						if (reset) b[l] = 0;
-
-						double SX = this->Sx;
-						double SY = this->Sy;
-						double SZ = this->Sz;
-						double DV = this->dV;
-						double reduced = 1;
-	
-						auto reduce = [](Velocity& V, Side side, double& reduced)
-						{
-							if (V.boundary.type(side) == MathBoundary::Dirichlet)
-							{
-								reduced *= 0.75;
-							}
-						};
-
-						if (i == 0)				DV = DV * 0.5;
-						else if (i == nx)		DV = DV * 0.5;
-
-
-						if (dim > 1)
-						{
-							if (j == 0)			reduce(u, Side::south, reduced);
-							if (j == ny - 1)	reduce(u, Side::north, reduced);
-						}
-
-
-						if (dim > 2)
-						{
-							if (k == 0)			reduce(u, Side::front, reduced);
-							if (k == nz - 1)	reduce(u, Side::back, reduced);
-						}
-
-
-						b[l] += 0.5 * (T(i, j, k) - T(i - 1, j, k));
-
-						//b[l] += general(u, v, Side::center, dp, DV, tau, Sx, hx, PhysCoef, reduced);
-
-					}
-				}
-			}
-		}
-	}
-
 }

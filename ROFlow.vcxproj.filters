@@ -68,5 +68,8 @@
     <ClInclude Include="IterativeSolver.h">
       <Filter>FlowSolver</Filter>
     </ClInclude>
+    <ClInclude Include="Extras.h">
+      <Filter>FlowSolver</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

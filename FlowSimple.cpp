@@ -508,10 +508,10 @@ void FlowSolver::form_u_rhs_for_simple(double* b, bool reset)
 
 void FlowSolver::poisson_equation_for_p_prime()
 {
-	double tau_p = 10.25 * pow(fmin(fmin(hx, hy), hz), 2);
+	double tau_p = 30.25 * pow(fmin(fmin(hx, hy), hz), 2);
 	int iter_p = 0;
 	double res, res0 = 0;
-	double eps = 1, eps0 = 1e-6;
+	double eps = 1, eps0 = 1e-5;
 
 	auto laplace = [this](ScalarVariable& f, int i, int j = 0, int k = 0)
 	{
@@ -759,6 +759,7 @@ void FlowSolver::solve_simple(int steps_at_ones)
 
 void FlowSolver::solve_system(int steps_at_ones)
 {
+
 	if (SM.nval == 0)
 	{
 		form_big_matrix(SM, B);
@@ -767,22 +768,20 @@ void FlowSolver::solve_system(int steps_at_ones)
 	{
 		form_matrix_for_heat_equation(sm, b);
 	}
-
-
+	
 	for (int q = 0; q < steps_at_ones; q++)
 	{
 		iter++;
 		total_time += tau;
-
 		
 		int sq = 0;
 		while (true)
 		{
 			sq++;
-			form_big_rhs(B, true);
-			itsol.solveGS(U, U0, B, Nvx + Nvy, SM);
-			poisson_equation_for_p_prime();
-			correction_for_simple();
+			timer("form_rhs", form_big_rhs(B, true);)
+			timer("solveGS", itsol.solveGS(U, U0, B, Nvx + Nvy, SM);)
+			timer("p_prime poisson", poisson_equation_for_p_prime();)
+			timer("correction", correction_for_simple();)
 
 			double div = check_div();
 			if (sq % 100 == 0) print("div = " << div)
@@ -792,19 +791,23 @@ void FlowSolver::solve_system(int steps_at_ones)
 		ux.transfer_data_to(vx);
 		uy.transfer_data_to(vy);
 
-
+		timer("heat",
 		form_rhs_for_heat_equation(b, true);
-		//itsol.solveGS(T.get_ptr(), T0.get_ptr(), b, N, sm);
-		solve_heat_equation_explicitly();
-
+		itsol.solveGS(T.get_ptr(), T0.get_ptr(), b, N, sm);
+		//solve_heat_equation_explicitly();
+		)
 
 		//if (q % 100 == 0) print(uy(nx / 4, ny / 2, 0) << " " << check_div());
-		if (q % 100 == 0)
+		
+		if ((q+1) % 100 == 0)
 		{
 			double Ek, Vmax;
 			statistics(Ek, Vmax);
-			print("Ek = " << Ek << ", Vmax = " << Vmax);
-		}
+			
+			print("t = " << total_time << ", Ek = " << Ek << ", Vmax = " << Vmax);
 
+			//for (auto &it : m_timer)	cout << it.first << ": " << it.second << endl;
+			//if (kinetic_check.stop(Ek, true)) break;
+		}
 	}
 }

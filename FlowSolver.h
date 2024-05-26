@@ -3,7 +3,11 @@
 #include "IterativeSolver.h"
 #include "Configuration.h"
 #include "Variable.h"
+#include "Extras.h"
 #include <map>
+
+#define timer(name, func) {double start_ = clock();  func;  double end_ = clock(); m_timer[name] += (end_ - start_) / CLOCKS_PER_SEC;}
+
 using namespace std;
 enum class PhysBoundary
 {
@@ -41,7 +45,9 @@ public:
 	size_t iter = 0;
 	int iter_limit = 1000;
 	std::map <Side, PhysBoundary> phys_bc;
+	std::map <std::string, double> m_timer;
 	IterativeSolver itsol;
+	Checker kinetic_check;
 
 	FlowSolver(Configuration config);
 
@@ -83,7 +89,6 @@ public:
 
 	void form_big_rhs(double* b, bool reset);
 
-	void form_rhs_navier_stockes_with_heat(double* b, bool reset);
 
 
 };
