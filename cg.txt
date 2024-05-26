@@ -1,0 +1,90 @@
+	auto fullFlux = [this](ScalarVariable &p, int i, int j, int k)
+	{
+		double FxEast, FxWest, FyNorth, FySouth, FzFront, FzBack;
+		FxEast = FxWest = FyNorth = FySouth = FzFront = FzBack = 0;
+		// West Flux
+		if (i == 0)
+		{
+			if (p.boundary.type(Side::west) == MathBoundary::Inlet)
+				FxWest = (p.get_dx(Side::west, i, j, k)
+					- ux.get_for_centered_cell(Side::west, i, j, k) / tau) * Sx;
+
+			if (p.boundary.type(Side::west) == MathBoundary::Neumann)
+				FxWest = 0;
+		}
+		else
+		{
+			FxWest = (p.get_dx(Side::west, i, j, k)
+				- ux.get_for_centered_cell(Side::west, i, j, k) / tau) * Sx;
+		}
+
+		// East Flux
+		if (i == nx - 1)
+		{
+			if (p.boundary.type(Side::east) == MathBoundary::Outlet)
+				FxEast = (p.get_dx(Side::east, i, j, k)
+					- ux.get_for_centered_cell(Side::east, i, j, k) / tau) * Sx;
+
+			if (p.boundary.type(Side::east) == MathBoundary::Neumann)
+				FxEast = 0;
+		}
+		else
+		{
+			FxEast = (p.get_dx(Side::east, i, j, k)
+				- ux.get_for_centered_cell(Side::east, i, j, k) / tau) * Sx;
+		}
+
+		
+		// South Flux
+		if (j == 0)
+		{
+			if (p.boundary.type(Side::south) == MathBoundary::Neumann)
+				FySouth = 0;
+		}
+		else
+		{
+			FySouth = (p.get_dy(Side::south, i, j, k)
+				- uy.get_for_centered_cell(Side::south, i, j, k) / tau) * Sy;
+		}
+
+		// North Flux
+		if (j == ny - 1)
+		{
+			if (p.boundary.type(Side::north) == MathBoundary::Neumann)
+				FyNorth = 0;
+		}
+		else
+		{
+			FyNorth = (p.get_dy(Side::north, i, j, k)
+				- uy.get_for_centered_cell(Side::north, i, j, k) / tau) * Sy;
+		}
+
+		// Front Flux
+		if (k == 0)
+		{
+			if (p.boundary.type(Side::front) == MathBoundary::Neumann)
+				FzFront = 0;
+		}
+		else
+		{
+			FzFront = (p.get_dz(Side::front, i, j, k)
+				- uz.get_for_centered_cell(Side::front, i, j, k) / tau) * Sz;
+		}
+
+		// Back Flux
+		if (k == nz - 1)
+		{
+			if (p.boundary.type(Side::back) == MathBoundary::Neumann)
+				FzBack = 0;
+		}
+		else
+		{
+			FzBack = (p.get_dz(Side::back, i, j, k)
+				- uz.get_for_centered_cell(Side::back, i, j, k) / tau) * Sz;
+		}
+
+		
+		return (FxEast - FxWest) + (FyNorth - FySouth) + (FzBack - FzFront);
+
+
+	};

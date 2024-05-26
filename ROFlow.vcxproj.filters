@@ -1,0 +1,72 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="FlowSolver">
+      <UniqueIdentifier>{2e971237-d8cb-449b-9dbb-c3795a2a71a6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="_tools">
+      <UniqueIdentifier>{3743e6bd-22cc-46d0-a3c4-6ff21068a55c}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="FlowMain.cpp">
+      <Filter>FlowSolver</Filter>
+    </ClCompile>
+    <ClCompile Include="FromOuterSparse\SparseMatrix.cpp">
+      <Filter>_tools</Filter>
+    </ClCompile>
+    <ClCompile Include="FromOuterSparse\SparseMatrix2.cpp">
+      <Filter>_tools</Filter>
+    </ClCompile>
+    <ClCompile Include="toolkit.cpp">
+      <Filter>_tools</Filter>
+    </ClCompile>
+    <ClCompile Include="FlowProjection.cpp">
+      <Filter>FlowSolver</Filter>
+    </ClCompile>
+    <ClCompile Include="FlowSimple.cpp">
+      <Filter>FlowSolver</Filter>
+    </ClCompile>
+    <ClCompile Include="FlowHeat.cpp">
+      <Filter>FlowSolver</Filter>
+    </ClCompile>
+    <ClCompile Include="FlowTest.cpp">
+      <Filter>FlowSolver</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="FlowSolver.h">
+      <Filter>FlowSolver</Filter>
+    </ClInclude>
+    <ClInclude Include="toolkit.h">
+      <Filter>_tools</Filter>
+    </ClInclude>
+    <ClInclude Include="FromOuterSparse\SparseMatrix.h">
+      <Filter>_tools</Filter>
+    </ClInclude>
+    <ClInclude Include="Configuration.h">
+      <Filter>_tools</Filter>
+    </ClInclude>
+    <ClInclude Include="Variable.h">
+      <Filter>FlowSolver</Filter>
+    </ClInclude>
+    <ClInclude Include="IterativeSolver.h">
+      <Filter>FlowSolver</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
