@@ -760,12 +760,9 @@ void FlowSolver::solve_simple(int steps_at_ones)
 void FlowSolver::solve_system(int steps_at_ones)
 {
 
-	if (SM.nval == 0)
+	if (iter == 0)
 	{
 		form_big_matrix(SM, B);
-	}
-	if (sm.nval == 0)
-	{
 		form_matrix_for_heat_equation(sm, b);
 	}
 	
@@ -782,6 +779,8 @@ void FlowSolver::solve_system(int steps_at_ones)
 			timer("solveGS", itsol.solveGS(U, U0, B, Nvx + Nvy, SM);)
 			timer("p_prime poisson", poisson_equation_for_p_prime();)
 			timer("correction", correction_for_simple();)
+			
+			
 
 			double div = check_div();
 			if (sq % 100 == 0) print("div = " << div)
@@ -799,15 +798,20 @@ void FlowSolver::solve_system(int steps_at_ones)
 
 		//if (q % 100 == 0) print(uy(nx / 4, ny / 2, 0) << " " << check_div());
 		
-		if ((q+1) % 100 == 0)
+		if ((q + 1) % 100 == 0)
 		{
 			double Ek, Vmax;
 			statistics(Ek, Vmax);
-			
+
 			print("t = " << total_time << ", Ek = " << Ek << ", Vmax = " << Vmax);
 
+
 			//for (auto &it : m_timer)	cout << it.first << ": " << it.second << endl;
-			//if (kinetic_check.stop(Ek, true)) break;
+			//if (kinetic_check.stop(Ek, true))
+			{
+				//stats.write({ Ra, Ek, Vmax });
+				//break;
+			}
 		}
 	}
 }

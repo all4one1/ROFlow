@@ -1,12 +1,15 @@
 #pragma once
 #include <vector>
-
+#include <map>
+#include <sstream>
+#include <string>
 struct Checker
 {
 	std::vector<double> Ek;
 	size_t N, i, itotal;
-	double eps = 1e-10;
-	Checker(size_t n = 3)
+	double eps = 1e-15;
+	double dEk = 0;
+	Checker(size_t n = 30)
 	{
 		N = n;
 		itotal = 0;
@@ -32,14 +35,74 @@ struct Checker
 			av += Ek[k];
 		} av = av / N;
 
+		dEk = Ek[i] - Ek[(itotal - 1) % N];
+
+		double res = tanh(eps / abs(av - Ek[i]));
 		if (print)
 		{
-			std::cout << "Ek = " << Ek[i] << ", dEk = " << Ek[i] - Ek[(itotal - 1) % N];
-			std::cout << ", converged: " << 100 * tanh(eps / abs(av - Ek[i])) << " %";
+			std::cout << "Ek = " << Ek[i] << ", dEk = " << dEk;
+			std::cout << ", converged: " << 100 * res << " %";
 			std::cout << std::endl;
 		}
 
-		if (abs(av - Ek[i]) < eps) return true;
+		if (res > 0.99999) return true;
 		else return false;
 	}
+};
+
+
+struct StateOut
+{
+	std::map<std::string, double> m;
+	std::map<std::string, double*> mp;
+	std::ofstream file;
+	std::string defname = "stats.dat";
+	size_t iter = 0;
+	StateOut()
+	{
+		file.open(defname, std::ios::app);
+	}
+
+	void write_head(std::string h)
+	{
+		if (iter == 0)
+			file << h << std::endl;
+		iter++;
+	}
+
+	void write(std::vector<double> v)
+	{
+		for (auto& it : v) 
+			file << it << " "; 
+		file << std::endl; 
+		iter++;
+	}
+
+	void write()
+	{
+		iter++;
+		if (iter == 1)
+		{
+			for (auto& it : mp)	file << it.first << " ";
+			file << std::endl;
+		}
+
+		for (auto& it : mp)	file << *(it.second) << " ";
+		file << std::endl;
+	}
+	void add(std::string name, double &f)
+	{
+		mp[name] = &f;
+	}
+
+	//std::string int_to_str(int i)
+	//{
+	//	std::stringstream ss;
+	//	std::string name;
+	//	ss.str("");
+	//	ss.clear();
+	//	ss << i;
+	//	name = ss.str();
+	//	return name;
+	//}
 };

@@ -66,6 +66,9 @@ FlowSolver::FlowSolver(Configuration config)
 	}
 
 	NV  = Nvx + Nvy + Nvz;
+
+
+
 	stride  = Nvx;
 	stride2 = Nvx + Nvy;
 
@@ -91,6 +94,7 @@ FlowSolver::FlowSolver(Configuration config)
 	ux = Velocity(Component::x, nx, ny, nz, hx, hy, hz, false, &U[0]);
 	uy = Velocity(Component::y, nx, ny, nz, hx, hy, hz, false, &U[stride]);
 	uz = Velocity(Component::z, nx, ny, nz, hx, hy, hz, false, &U[stride2]);
+
 
 	vx_prime = Velocity(Component::x, nx, ny, nz, hx, hy, hz);
 	vy_prime = Velocity(Component::y, nx, ny, nz, hx, hy, hz);
@@ -211,13 +215,15 @@ void FlowSolver::statistics(double &Ek, double &Vmax)
 {
 	Ek = 0;
 	Vmax = 0;
+	double ux_ = 0, uy_ = 0, uz_ = 0;
 	for (int k = 0; k < nz; k++) {
 		for (int j = 0; j < ny; j++) {
 			for (int i = 0; i < nx; i++)
 			{
-				double ux_ = 0.5 * (ux(i + 1, j, k) + ux(i, j, k));
-				double uy_ = 0.5 * (uy(i, j + 1, k) + uy(i, j, k));
-				double uz_ = 0.5 * (uz(i, j, k + 1) + uz(i, j, k));
+				ux_ = 0.5 * (ux(i + 1, j, k) + ux(i, j, k));
+				if (dim > 1) uy_ = 0.5 * (uy(i, j + 1, k) + uy(i, j, k));
+				if (dim > 2) uz_ = 0.5 * (uz(i, j, k + 1) + uz(i, j, k));
+
 				double V = sqrt(pow(ux_, 2) + pow(uy_, 2) + pow(uz_, 2));
 				if (V > Vmax) Vmax = V;
 				Ek += 0.5 * (pow(V, 2)) * dV;

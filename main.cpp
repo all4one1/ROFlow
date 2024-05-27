@@ -27,7 +27,7 @@ int main(int argc, char** argv)
 	config.show_parameters();
 
 
-	solver.Ra = 3700;
+	solver.Ra = 5000;
 	solver.Pr = 1;
 	solver.grav.x = 0;
 	solver.grav.y = 1;
@@ -39,6 +39,8 @@ int main(int argc, char** argv)
 	
 
 	solver.solve_system(1000000);
+
+
 	solver.uy.show_max_min();
 	solver.uy.write3D(0, 1, 0);
 

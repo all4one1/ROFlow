@@ -48,6 +48,7 @@ public:
 	std::map <std::string, double> m_timer;
 	IterativeSolver itsol;
 	Checker kinetic_check;
+	StateOut stats;
 
 	FlowSolver(Configuration config);
 

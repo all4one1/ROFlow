@@ -1,5 +1,6 @@
 #include "FlowSolver.h"
 
+#define REDUCED 1
 
 void FlowSolver::form_matrix_test(SparseMatrix& M, double* b)
 {
@@ -417,6 +418,8 @@ void FlowSolver::form_rhs_test(double* b, bool reset)
 }
 
 
+#define DIRICHLET(side) boundary.type(side) == MathBoundary::Dirichlet
+#define NEUMANN(side) boundary.type(side) == MathBoundary::Neumann
 
 void FlowSolver::form_big_matrix(SparseMatrix& M, double* b)
 {
@@ -546,6 +549,40 @@ void FlowSolver::form_big_matrix(SparseMatrix& M, double* b)
 						};
 
 
+						if (i == 0 || i == nx)
+						{
+							DV = DV * 0.5;
+							SZ = SZ * 0.5;
+							SY = SY * 0.5;
+						}
+
+						if (REDUCED)
+						{
+
+
+							if (dim > 1)
+							{
+								if ((j == 0 && u.boundary.type(Side::south) == MathBoundary::Dirichlet)
+									|| (j == (ny - 1) && u.boundary.type(Side::north) == MathBoundary::Dirichlet))
+								{
+									DV = DV * 0.75;
+									SX = SX * 0.75;
+									SZ = SZ * 0.75;
+								}
+							}
+							if (dim > 2)
+							{
+								if ((k == 0 && u.boundary.type(Side::front) == MathBoundary::Dirichlet)
+									|| (k == (nz - 1) && u.boundary.type(Side::back) == MathBoundary::Dirichlet))
+								{
+									DV = DV * 0.75;
+									SX = SX * 0.75;
+									SY = SY * 0.75;
+								}
+							}
+						}
+
+
 						//Side::west
 						if (i < nx)
 						{
@@ -560,7 +597,7 @@ void FlowSolver::form_big_matrix(SparseMatrix& M, double* b)
 								}
 								if (u.boundary.type(side) == MathBoundary::Neumann)
 								{
-									deriv_at_boundary(u, side, +1, Sx, hx, PhysCoef, l, a);
+									deriv_at_boundary(u, side, +1, SX, hx, PhysCoef, l, a);
 									//M.add_line_with_map(a.get_map(), l);
 									//continue;
 								}
@@ -569,16 +606,16 @@ void FlowSolver::form_big_matrix(SparseMatrix& M, double* b)
 							{
 								if (u.boundary.type(side) == MathBoundary::Dirichlet)
 								{
-									pre_boundary(u, side, Sx, hx, PhysCoef, l, a);
+									pre_boundary(u, side, SX, hx, PhysCoef, l, a);
 								}
 								if (u.boundary.type(side) == MathBoundary::Neumann)
 								{
-									general(u, side, Sx, hx, PhysCoef, false);
+									general(u, side, SX, hx, PhysCoef, false);
 								}
 							}
 							else
 							{
-								general(u, side, Sx, hx, PhysCoef, false);
+								general(u, side, SX, hx, PhysCoef, false);
 							}
 						}
 
@@ -597,7 +634,7 @@ void FlowSolver::form_big_matrix(SparseMatrix& M, double* b)
 
 								if (u.boundary.type(side) == MathBoundary::Neumann)
 								{
-									deriv_at_boundary(u, side, -1, Sx, hx, PhysCoef, l, a);
+									deriv_at_boundary(u, side, -1, SX, hx, PhysCoef, l, a);
 									//M.add_line_with_map(a.get_map(), l);
 									//continue;
 								}
@@ -606,40 +643,31 @@ void FlowSolver::form_big_matrix(SparseMatrix& M, double* b)
 							{
 								if (u.boundary.type(side) == MathBoundary::Dirichlet)
 								{
-									pre_boundary(u, side, Sx, hx, PhysCoef, l, a);
+									pre_boundary(u, side, SX, hx, PhysCoef, l, a);
 								}
 								if (u.boundary.type(side) == MathBoundary::Neumann)
 								{
-									general(u, side, Sx, hx, PhysCoef, false);
+									general(u, side, SX, hx, PhysCoef, false);
 								}
 							}
 							else
 							{
-								general(u, side, Sx, hx, PhysCoef, false);
+								general(u, side, SX, hx, PhysCoef, false);
 							}
 						}
 
 						if (dim > 1)
 						{
-							if (i == 0 || i == nx) S_reduced = 0.5;
-							general(u, Side::south, Sy * S_reduced, hy, PhysCoef, j == 0);
-							general(u, Side::north, Sy * S_reduced, hy, PhysCoef, j == ny - 1);
-
-							if (j == 0)		 reduce(u, Side::south, reduced);
-							if (j == ny - 1) reduce(u, Side::north, reduced);
+							general(u, Side::south, SY, hy, PhysCoef, j == 0);
+							general(u, Side::north, SY, hy, PhysCoef, j == ny - 1);
 						}
 						if (dim > 2)
 						{
-							if (i == 0 || i == nx) S_reduced = 0.5;
-							general(u, Side::front, Sz * S_reduced, hz, PhysCoef, k == 0);
-							general(u, Side::back, Sz * S_reduced, hz, PhysCoef, k == nz - 1);
-
-							if (k == 0)		 reduce(u, Side::front, reduced);
-							if (k == nz - 1) reduce(u, Side::back, reduced);
+							general(u, Side::front, SZ, hz, PhysCoef, k == 0);
+							general(u, Side::back, SZ, hz, PhysCoef, k == nz - 1);
 						}
-						if (i == 0 || i == nx) reduced *= 0.5;
 
-						a(Side::center) += dV / tau * reduced;
+						a(Side::center) += DV / tau;
 
 
 						M.add_line_with_map(a.get_map(), l);
@@ -689,6 +717,40 @@ void FlowSolver::form_big_matrix(SparseMatrix& M, double* b)
 							}
 						};
 
+						if (j == 0 || j == ny)
+						{
+							DV = DV * 0.5;
+							SZ = SZ * 0.5;
+							SX = SX * 0.5;
+						}
+
+						if (REDUCED)
+						{
+
+
+							//if (dim > 1)
+							{
+								if ((i == 0 && u.boundary.type(Side::west) == MathBoundary::Dirichlet)
+									|| (i == (nx - 1) && u.boundary.type(Side::east) == MathBoundary::Dirichlet))
+								{
+									DV = DV * 0.75;
+									SY = SY * 0.75;
+									SZ = SZ * 0.75;
+								}
+							}
+							if (dim > 2)
+							{
+								if ((k == 0 && u.boundary.type(Side::front) == MathBoundary::Dirichlet)
+									|| (k == (nz - 1) && u.boundary.type(Side::back) == MathBoundary::Dirichlet))
+								{
+									DV = DV * 0.75;
+									SX = SX * 0.75;
+									SY = SY * 0.75;
+								}
+							}
+						}
+
+
 						//Side::south
 						if (j < ny)
 						{
@@ -703,7 +765,7 @@ void FlowSolver::form_big_matrix(SparseMatrix& M, double* b)
 								}
 								if (u.boundary.type(side) == MathBoundary::Neumann)
 								{
-									deriv_at_boundary(u, side, +off, Sy, hy, PhysCoef, l, a);
+									deriv_at_boundary(u, side, +off, SY, hy, PhysCoef, l, a);
 									//M.add_line_with_map(a.get_map(), l);
 									//continue;
 								}
@@ -712,16 +774,16 @@ void FlowSolver::form_big_matrix(SparseMatrix& M, double* b)
 							{
 								if (u.boundary.type(side) == MathBoundary::Dirichlet)
 								{
-									pre_boundary(u, side, Sy, hy, PhysCoef, l, a);
+									pre_boundary(u, side, SY, hy, PhysCoef, l, a);
 								}
 								if (u.boundary.type(side) == MathBoundary::Neumann)
 								{
-									general(u, side, Sy, hy, PhysCoef, false);
+									general(u, side, SY, hy, PhysCoef, false);
 								}
 							}
 							else
 							{
-								general(u, side, Sy, hy, PhysCoef, false);
+								general(u, side, SY, hy, PhysCoef, false);
 							}
 						}
 
@@ -740,7 +802,7 @@ void FlowSolver::form_big_matrix(SparseMatrix& M, double* b)
 
 								if (u.boundary.type(side) == MathBoundary::Neumann)
 								{
-									deriv_at_boundary(u, side, -off, Sy, hy, PhysCoef, l, a);
+									deriv_at_boundary(u, side, -off, SY, hy, PhysCoef, l, a);
 									//M.add_line_with_map(a.get_map(), l);
 									//continue;
 								}
@@ -749,42 +811,32 @@ void FlowSolver::form_big_matrix(SparseMatrix& M, double* b)
 							{
 								if (u.boundary.type(side) == MathBoundary::Dirichlet)
 								{
-									pre_boundary(u, side, Sy, hy, PhysCoef, l, a);
+									pre_boundary(u, side, SY, hy, PhysCoef, l, a);
 								}
 								if (u.boundary.type(side) == MathBoundary::Neumann)
 								{
-									general(u, side, Sy, hy, PhysCoef, false);
+									general(u, side, SY, hy, PhysCoef, false);
 								}
 							}
 							else
 							{
-								general(u, side, Sy, hy, PhysCoef, false);
+								general(u, side, SY, hy, PhysCoef, false);
 							}
 						}
 
 
 						//if (dim > 1)
 						{
-							if (j == 0 || j == ny) S_reduced = 0.5;
-							general(u, Side::west, Sx * S_reduced, hx, PhysCoef, i == 0);
-							general(u, Side::east, Sx * S_reduced, hx, PhysCoef, i == nx - 1);
-
-							if (i == 0)		 reduce(u, Side::west, reduced);
-							if (i == nx - 1) reduce(u, Side::east, reduced);
+							general(u, Side::west, SX, hx, PhysCoef, i == 0);
+							general(u, Side::east, SX, hx, PhysCoef, i == nx - 1);
 						}
 						if (dim > 2)
 						{
-							if (j == 0 || j == ny) S_reduced = 0.5;
-							general(u, Side::front, Sz * S_reduced, hz, PhysCoef, k == 0);
-							general(u, Side::back, Sz * S_reduced, hz, PhysCoef, k == nz - 1);
-
-							if (k == 0)		 reduce(u, Side::front, reduced);
-							if (k == nz - 1) reduce(u, Side::back, reduced);
+							general(u, Side::front, SZ, hz, PhysCoef, k == 0);
+							general(u, Side::back, SZ, hz, PhysCoef, k == nz - 1);
 						}
 
-						if (j == 0 || j == ny) reduced *= 0.5;
-
-						a(Side::center) += dV / tau * reduced;
+						a(Side::center) += DV / tau;
 
 
 						M.add_line_with_map(a.get_map(), l);
@@ -838,7 +890,7 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 		return res;
 	};
 
-	auto FluxVX = [this](int i, int j, int k)
+	auto FluxVX = [this](int i, int j, int k, double Sx, double Sy, double Sz)
 	{
 		double FX = Sx * (vx.get_for_vx_cell(Side::east, i, j, k) *  vx.get_for_vx_cell(Side::east, i, j, k)
 						- vx.get_for_vx_cell(Side::west, i, j, k) *  vx.get_for_vx_cell(Side::west, i, j, k));
@@ -848,7 +900,7 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 						- vx.get_for_vx_cell(Side::front, i, j, k) * vz.get_for_vx_cell(Side::front, i, j, k));
 		return FX + FY + FZ;
 	};
-	auto FluxVY = [this](int i, int j, int k)
+	auto FluxVY = [this](int i, int j, int k, double Sx, double Sy, double Sz)
 	{
 		double FX = Sx * (vx.get_for_vy_cell(Side::east, i, j, k) *  vy.get_for_vy_cell(Side::east, i, j, k)
 						- vx.get_for_vy_cell(Side::west, i, j, k) *  vy.get_for_vy_cell(Side::west, i, j, k));
@@ -858,7 +910,7 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 						- vy.get_for_vy_cell(Side::front, i, j, k) * vz.get_for_vy_cell(Side::front, i, j, k));
 		return FX + FY + FZ;
 	};
-	auto FluxVZ = [this](int i, int j, int k)
+	auto FluxVZ = [this](int i, int j, int k, double Sx, double Sy, double Sz)
 	{
 		double FX = Sx * (vx.get_for_vz_cell(Side::east, i, j, k) *  vz.get_for_vz_cell(Side::east, i, j, k)
 						- vx.get_for_vz_cell(Side::west, i, j, k) *  vz.get_for_vz_cell(Side::west, i, j, k));
@@ -885,8 +937,9 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 						double SY = this->Sy;
 						double SZ = this->Sz;
 						double DV = this->dV;
-						double dp = 0;
-						double reduced = 1;
+						double rx = 1, ry = 1, rz = 1;
+
+
 						double PhysCoef = 1.0 / Re;
 
 						auto general = [this, b, i, j, k, l](Velocity& v, Velocity& v0, Side side, double dp, double dV, double tau, double S, double h, double coef, double reduced = 1)
@@ -895,6 +948,41 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 								- P.get_shifted_diff(Component::x, i, j, k) * S * reduced
 								+ Ra * grav.x * T.get_shifted(Component::x, i, j, k) * dV * reduced;
 						};
+
+						if (i == 0 || i == nx)
+						{
+							DV = DV * 0.5;
+							SZ = SZ * 0.5;
+							SY = SY * 0.5;
+						}
+
+						if (REDUCED)
+						{
+							if (dim > 1)
+							{
+								if ((j == 0 && u.boundary.type(Side::south) == MathBoundary::Dirichlet)
+									|| (j == (ny - 1) && u.boundary.type(Side::north) == MathBoundary::Dirichlet))
+								{
+									DV = DV * 0.75;
+									SX = SX * 0.75;
+									SZ = SZ * 0.75;
+									ry = 0.75;
+								}
+							}
+							if (dim > 2)
+							{
+								if ((k == 0 && u.boundary.type(Side::front) == MathBoundary::Dirichlet)
+									|| (k == (nz - 1) && u.boundary.type(Side::back) == MathBoundary::Dirichlet))
+								{
+									DV = DV * 0.75;
+									SX = SX * 0.75;
+									SY = SY * 0.75;
+									rz = 0.75;
+								}
+							}
+						}
+
+
 
 						// west
 						if (i < nx)
@@ -910,14 +998,14 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 								}
 								else if (u.boundary.type(side) == MathBoundary::Neumann)
 								{
-									b[l] = PhysCoef * u.boundary.normal_deriv_oriented(side) * Sx;
+									b[l] = PhysCoef * u.boundary.normal_deriv_oriented(side) * SX;
 									//continue;
 								}
 							}
 							else if (i == 1)
 							{
 								if (u.boundary.type(side) == MathBoundary::Dirichlet)
-									b[l] += half_border(u, l, side, Sx, 2.0 * hx, PhysCoef);
+									b[l] += half_border(u, l, side, SX, 2.0 * hx, PhysCoef);
 							}
 						}
 
@@ -935,14 +1023,14 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 								}
 								else if (u.boundary.type(side) == MathBoundary::Neumann)
 								{
-									b[l] = PhysCoef * u.boundary.normal_deriv_oriented(side) * Sx;
+									b[l] = PhysCoef * u.boundary.normal_deriv_oriented(side) * SX;
 									//continue;
 								}
 							}
 							else if (i == nx - 1)
 							{
 								if (u.boundary.type(side) == MathBoundary::Dirichlet)
-									b[l] += half_border(u, l, side, Sx, 2.0 * hx, PhysCoef);
+									b[l] += half_border(u, l, side, SX, 2.0 * hx, PhysCoef);
 							}
 						}
 
@@ -953,20 +1041,14 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 							if (j == 0)
 							{
 								Side side = Side::south;
-								if (i == 0 || i == nx - 1)
-									SY = SY * 0.5;
 								b[l] += half_border(u, l, side, SY, hy, PhysCoef);
-								reduce(u, side, reduced);
 							}
 
 							//north
 							if (j == ny - 1)
 							{
 								Side side = Side::north;
-								if (i == 0 || i == nx - 1)
-									SY = SY * 0.5;
 								b[l] += half_border(u, l, side, SY, hy, PhysCoef);
-								reduce(u, side, reduced);
 							}
 						}
 
@@ -977,36 +1059,18 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 							if (k == 0)
 							{
 								Side side = Side::front;
-								if (i == 0 || i == nx - 1)
-									SZ = SZ * 0.5;
 								b[l] += half_border(u, l, side, SZ, hz, PhysCoef);
-								reduce(u, side, reduced);
 							}
 							//back
 							if (k == nz - 1)
 							{
 								Side side = Side::back;
-								if (i == 0 || i == nx - 1)
-									SZ = SZ * 0.5;
 								b[l] += half_border(u, l, side, SZ, hz, PhysCoef);
-								reduce(u, side, reduced);
 							}
 						}
 
-						//general
-						if (i == 0)
-						{
-							DV = DV * 0.5;
-						}
-
-						else if (i == nx)
-						{
-							DV = DV * 0.5;
-						}
-
-
-						b[l] += general(u, v, Side::center, dp, DV, tau, Sx, hx, PhysCoef, reduced);
-						b[l] += -FluxVX(i, j, k);
+						b[l] += general(u, v, Side::center, 1, DV, tau, SX, hx, PhysCoef, 1.0);
+						b[l] += -FluxVX(i, j, k, SX*rx, SY*ry, SZ*rz);
 					}
 				}
 			}
@@ -1029,8 +1093,7 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 						double SY = this->Sy;
 						double SZ = this->Sz;
 						double DV = this->dV;
-						double dp = 0;
-						double reduced = 1;
+						double rx = 1, ry = 1, rz = 1;
 						double PhysCoef = 1.0 / Re;
 
 						auto general = [this, b, i, j, k, l](Velocity& v, Velocity& v0, Side side, double dp, double dV, double tau, double S, double h, double coef, double reduced = 1)
@@ -1040,6 +1103,42 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 								- P.get_shifted_diff(Component::y, i, j, k) * S * reduced
 								+ Ra * grav.y * T.get_shifted(Component::y, i, j, k) * dV * reduced;
 						};
+
+
+						if (j == 0 || j == ny)
+						{
+							DV = DV * 0.5;
+							SZ = SZ * 0.5;
+							SX = SX * 0.5;
+						}
+
+						if (REDUCED)
+						{
+
+							//if (dim > 1)
+							{
+								if ((i == 0 && u.boundary.type(Side::west) == MathBoundary::Dirichlet)
+									|| (i == (nx - 1) && u.boundary.type(Side::east) == MathBoundary::Dirichlet))
+								{
+									DV = DV * 0.75;
+									SY = SY * 0.75;
+									SZ = SZ * 0.75;
+									rx = 0.75;
+								}
+							}
+							if (dim > 2)
+							{
+								if ((k == 0 && u.boundary.type(Side::front) == MathBoundary::Dirichlet)
+									|| (k == (nz - 1) && u.boundary.type(Side::back) == MathBoundary::Dirichlet))
+								{
+									DV = DV * 0.75;
+									SX = SX * 0.75;
+									SY = SY * 0.75;
+									rz = 0.75;
+								}
+							}
+						}
+
 
 
 						// south
@@ -1056,14 +1155,14 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 								}
 								else if (u.boundary.type(side) == MathBoundary::Neumann)
 								{
-									b[l] = PhysCoef * u.boundary.normal_deriv_oriented(side) * Sy;
+									b[l] = PhysCoef * u.boundary.normal_deriv_oriented(side) * SY;
 									//continue;
 								}
 							}
 							else if (j == 1)
 							{
 								if (u.boundary.type(side) == MathBoundary::Dirichlet)
-									b[l] += half_border(u, l, side, Sy, 2.0 * hy, PhysCoef);
+									b[l] += half_border(u, l, side, SY, 2.0 * hy, PhysCoef);
 							}
 						}
 
@@ -1081,14 +1180,14 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 								}
 								else if (u.boundary.type(side) == MathBoundary::Neumann)
 								{
-									b[l] = PhysCoef * u.boundary.normal_deriv_oriented(side) * Sy;
+									b[l] = PhysCoef * u.boundary.normal_deriv_oriented(side) * SY;
 									//continue;
 								}
 							}
 							else if (j == ny - 1)
 							{
 								if (u.boundary.type(side) == MathBoundary::Dirichlet)
-									b[l] += half_border(u, l, side, Sy, 2.0 * hy, PhysCoef);
+									b[l] += half_border(u, l, side, SY, 2.0 * hy, PhysCoef);
 							}
 						}
 
@@ -1099,20 +1198,14 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 							if (i == 0)
 							{
 								Side side = Side::west;
-								if (j == 0 || j == ny - 1)
-									SX = SX * 0.5;
 								b[l] += half_border(u, l, side, SX, hx, PhysCoef);
-								reduce(u, side, reduced);
 							}
 
 							//east
 							if (i == nx - 1)
 							{
 								Side side = Side::east;
-								if (j == 0 || j == ny - 1)
-									SX = SX * 0.5;
 								b[l] += half_border(u, l, side, SX, hx, PhysCoef);
-								reduce(u, side, reduced);
 							}
 						}
 
@@ -1123,34 +1216,18 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 							if (k == 0)
 							{
 								Side side = Side::front;
-								if (j == 0 || j == ny - 1)
-									SZ = SZ * 0.5;
 								b[l] += half_border(u, l, side, SZ, hz, PhysCoef);
-								reduce(u, side, reduced);
 							}
 							//back
 							if (k == nz - 1)
 							{
 								Side side = Side::back;
-								if (j == 0 || j == ny - 1)
-									SZ = SZ * 0.5;
 								b[l] += half_border(u, l, side, SZ, hz, PhysCoef);
-								reduce(u, side, reduced);
 							}
 						}
 
-						//general
-						if (j == 0)
-						{
-							DV = DV * 0.5;
-						}
-						else if (j == ny)
-						{
-							DV = DV * 0.5;
-						}
-
-						b[l] += general(u, v, Side::center, dp, DV, tau, Sy, hy, PhysCoef, reduced);
-						b[l] += -FluxVY(i, j, k);
+						b[l] += general(u, v, Side::center, 1, DV, tau, SY, hy, PhysCoef, 1);
+						b[l] += -FluxVY(i, j, k, SX*rx, SY*ry, SZ*rz);
 					}
 				}
 			}
