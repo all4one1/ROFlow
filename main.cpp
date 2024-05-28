@@ -27,7 +27,7 @@ int main(int argc, char** argv)
 	config.show_parameters();
 
 
-	solver.Ra = 5000;
+	solver.Ra = 2550;
 	solver.Pr = 1;
 	solver.grav.x = 0;
 	solver.grav.y = 1;

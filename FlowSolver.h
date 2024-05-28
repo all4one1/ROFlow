@@ -6,6 +6,10 @@
 #include "Extras.h"
 #include <map>
 
+
+#define REDUCED 0
+
+
 #define timer(name, func) {double start_ = clock();  func;  double end_ = clock(); m_timer[name] += (end_ - start_) / CLOCKS_PER_SEC;}
 
 using namespace std;

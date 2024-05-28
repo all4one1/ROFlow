@@ -9,7 +9,7 @@ struct Checker
 	size_t N, i, itotal;
 	double eps = 1e-15;
 	double dEk = 0;
-	Checker(size_t n = 30)
+	Checker(size_t n = 10)
 	{
 		N = n;
 		itotal = 0;
@@ -37,7 +37,10 @@ struct Checker
 
 		dEk = Ek[i] - Ek[(itotal - 1) % N];
 
-		double res = tanh(eps / abs(av - Ek[i]));
+		//double res = tanh(eps / abs(av - Ek[i]));
+
+		double d = (abs(dEk) / Ek[i]);
+		double res = tanh(eps / d);
 		if (print)
 		{
 			std::cout << "Ek = " << Ek[i] << ", dEk = " << dEk;

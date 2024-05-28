@@ -1,6 +1,5 @@
 #include "FlowSolver.h"
 
-#define REDUCED 1
 
 void FlowSolver::form_matrix_test(SparseMatrix& M, double* b)
 {
@@ -874,13 +873,7 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 		}
 		return res;
 	};
-	auto reduce = [](Velocity& V, Side side, double& reduced)
-	{
-		if (V.boundary.type(side) == MathBoundary::Dirichlet)
-		{
-			reduced *= 0.75;
-		}
-	};
+
 	auto pre_fixed_node = [](Velocity& V, int l, Side side, double S, double h, double coef, double f = 0)
 	{
 		double res = 0.0;

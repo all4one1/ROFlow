@@ -807,10 +807,10 @@ void FlowSolver::solve_system(int steps_at_ones)
 
 
 			//for (auto &it : m_timer)	cout << it.first << ": " << it.second << endl;
-			//if (kinetic_check.stop(Ek, true))
+			if (kinetic_check.stop(Ek, true))
 			{
-				//stats.write({ Ra, Ek, Vmax });
-				//break;
+				stats.write({total_time, Ra, Ek, Vmax });
+				break;
 			}
 		}
 	}
