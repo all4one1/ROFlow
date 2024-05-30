@@ -422,6 +422,7 @@ void FlowSolver::form_rhs_test(double* b, bool reset)
 
 void FlowSolver::form_big_matrix(SparseMatrix& M, double* b)
 {
+	timer.start("matrix_formation");
 	struct Contribution
 	{
 		std::map<int, double> m;
@@ -476,13 +477,6 @@ void FlowSolver::form_big_matrix(SparseMatrix& M, double* b)
 		}
 	};
 
-	auto reduce = [](Velocity& V, Side side, double& reduced)
-	{
-		if (V.boundary.type(side) == MathBoundary::Dirichlet)
-		{
-			reduced *= 0.75;
-		}
-	};
 	auto fixed_node = [b](Velocity& v, Side side, int l, Contribution &a)
 	{
 		a[l] = 1;
@@ -844,6 +838,8 @@ void FlowSolver::form_big_matrix(SparseMatrix& M, double* b)
 			}
 		}
 	}
+
+	timer.end("matrix_formation");
 }
 
 void FlowSolver::form_big_rhs(double* b, bool reset)

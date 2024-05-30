@@ -42,6 +42,7 @@ void FlowSolver::solve_heat_equation_explicitly(int steps_at_ones)
 
 void FlowSolver::form_matrix_for_heat_equation(SparseMatrix &M, double *b)
 {
+	timer.start("matrix_formation");
 	struct Contribution
 	{
 		std::map<Side, double> m;
@@ -91,22 +92,75 @@ void FlowSolver::form_matrix_for_heat_equation(SparseMatrix &M, double *b)
 				};
 
 				double PhysCoef = 1.0 / Pr;
-				flux(Side::west, Sx, hx, PhysCoef, i == 0);
-				flux(Side::east, Sx, hx, PhysCoef, i == nx - 1);
+
+				double SX = this->Sx;
+				double SY = this->Sy;
+				double SZ = this->Sz;
+				double DV = this->dV;
+				double rx = 1, ry = 1, rz = 1;
+
+
+				if (REDUCED)
+				{
+					if (dim > 0)
+					{
+						if ((i == 0 && T.boundary.type(Side::west) == MathBoundary::Dirichlet)
+							|| (i == (nx - 1) && T.boundary.type(Side::east) == MathBoundary::Dirichlet))
+						{
+							DV = DV * 0.75;
+							SY = SY * 0.75;
+							SZ = SZ * 0.75;
+							rx = 0.75;
+						}
+					}
+
+
+					if (dim > 1)
+					{
+						if ((j == 0 && T.boundary.type(Side::south) == MathBoundary::Dirichlet)
+							|| (j == (ny - 1) && T.boundary.type(Side::north) == MathBoundary::Dirichlet))
+						{
+							DV = DV * 0.75;
+							SX = SX * 0.75;
+							SZ = SZ * 0.75;
+							ry = 0.75;
+						}
+					}
+					if (dim > 2)
+					{
+						if ((k == 0 && T.boundary.type(Side::front) == MathBoundary::Dirichlet)
+							|| (k == (nz - 1) && T.boundary.type(Side::back) == MathBoundary::Dirichlet))
+						{
+							DV = DV * 0.75;
+							SX = SX * 0.75;
+							SY = SY * 0.75;
+							rz = 0.75;
+						}
+					}
+				}
+
+
+
+
+
+
+
+				flux(Side::west, SX, hx, PhysCoef, i == 0);
+				flux(Side::east, SX, hx, PhysCoef, i == nx - 1);
 				
 
 				if (dim > 1)
 				{
-					flux(Side::south, Sy, hy, PhysCoef, j == 0);
-					flux(Side::north, Sy, hy, PhysCoef, j == ny - 1);
+					flux(Side::south, SY, hy, PhysCoef, j == 0);
+					flux(Side::north, SY, hy, PhysCoef, j == ny - 1);
 				}
 				if (dim > 2)
 				{
-					flux(Side::front, Sz, hz, PhysCoef, k == 0);
-					flux(Side::back, Sz, hz, PhysCoef, k == nz - 1);
+					flux(Side::front, SZ, hz, PhysCoef, k == 0);
+					flux(Side::back, SZ, hz, PhysCoef, k == nz - 1);
 				}
 
-				a[Side::center] += dV / tau;
+				a[Side::center] += DV / tau;
 
 				line[l] = a[Side::center];
 				line[l - 1] = a[Side::west];
@@ -126,11 +180,12 @@ void FlowSolver::form_matrix_for_heat_equation(SparseMatrix &M, double *b)
 	}
 	//nval = (int)val.size();
 
+	timer.end("matrix_formation");
 }
 
 void FlowSolver::form_rhs_for_heat_equation(double* b, bool reset)
 {
-	auto vF = [this](ScalarVariable& f, int i, int j, int k)
+	auto vF = [this](ScalarVariable& f, int i, int j, int k, double Sx, double Sy, double Sz)
 	{
 		double vxF = Sx * (f.get_at_side(Side::east, i, j, k) * vx.get_for_centered_cell(Side::east, i, j, k)
 			- f.get_at_side(Side::west, i, j, k) * vx.get_for_centered_cell(Side::west, i, j, k));
@@ -151,10 +206,56 @@ void FlowSolver::form_rhs_for_heat_equation(double* b, bool reset)
 				int l = i + off * j + off2 * k;
 				map<int, double> line;
 				if (reset) b[l] = 0.0;
-				b[l] = T0(i, j, k) * dV / tau;
 
-				
-				b[l] += -vF(T0, i, j, k);
+
+				double SX = this->Sx;
+				double SY = this->Sy;
+				double SZ = this->Sz;
+				double DV = this->dV;
+				double rx = 1, ry = 1, rz = 1;
+
+				if (REDUCED)
+				{
+					if (dim > 0)
+					{
+						if ((i == 0 && T.boundary.type(Side::west) == MathBoundary::Dirichlet)
+							|| (i == (nx - 1) && T.boundary.type(Side::east) == MathBoundary::Dirichlet))
+						{
+							DV = DV * 0.75;
+							SY = SY * 0.75;
+							SZ = SZ * 0.75;
+							rx = 0.75;
+						}
+					}
+
+
+					if (dim > 1)
+					{
+						if ((j == 0 && T.boundary.type(Side::south) == MathBoundary::Dirichlet)
+							|| (j == (ny - 1) && T.boundary.type(Side::north) == MathBoundary::Dirichlet))
+						{
+							DV = DV * 0.75;
+							SX = SX * 0.75;
+							SZ = SZ * 0.75;
+							ry = 0.75;
+						}
+					}
+					if (dim > 2)
+					{
+						if ((k == 0 && T.boundary.type(Side::front) == MathBoundary::Dirichlet)
+							|| (k == (nz - 1) && T.boundary.type(Side::back) == MathBoundary::Dirichlet))
+						{
+							DV = DV * 0.75;
+							SX = SX * 0.75;
+							SY = SY * 0.75;
+							rz = 0.75;
+						}
+					}
+				}
+
+
+				b[l] = T0(i, j, k) * DV / tau;
+				b[l] += -vF(T0, i, j, k, SX*rx, SY*ry, SZ*rz);
 
 
 
@@ -174,19 +275,19 @@ void FlowSolver::form_rhs_for_heat_equation(double* b, bool reset)
 				};
 
 				double PhysCoef = 1.0 / Pr;
-				bc(Side::west, Sx, hx, PhysCoef, i == 0);
-				bc(Side::east, Sx, hx, PhysCoef, i == nx - 1);
+				bc(Side::west, SX, hx, PhysCoef, i == 0);
+				bc(Side::east, SX, hx, PhysCoef, i == nx - 1);
 
 
 				if (dim > 1)
 				{
-					bc(Side::south, Sy, hy, PhysCoef, j == 0);
-					bc(Side::north, Sy, hy, PhysCoef, j == ny - 1);
+					bc(Side::south, SY, hy, PhysCoef, j == 0);
+					bc(Side::north, SY, hy, PhysCoef, j == ny - 1);
 				}
 				if (dim > 2)
 				{
-					bc(Side::front, Sz, hz, PhysCoef, k == 0);
-					bc(Side::back, Sz, hz, PhysCoef, k == nz - 1);
+					bc(Side::front, SZ, hz, PhysCoef, k == 0);
+					bc(Side::back, SZ, hz, PhysCoef, k == nz - 1);
 				}
 
 

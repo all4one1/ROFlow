@@ -3,6 +3,10 @@
 #include <map>
 #include <sstream>
 #include <string>
+#ifdef _WIN32
+#include "Windows.h"
+#endif // 
+
 struct Checker
 {
 	std::vector<double> Ek;
@@ -64,6 +68,19 @@ struct StateOut
 	StateOut()
 	{
 		file.open(defname, std::ios::app);
+		create_folder("results");
+	}
+
+	void create_folder(std::string name)
+	{
+		#ifdef __linux__
+		std::string str = "mkdir -p " + name + "/";
+		system(str.c_str());
+		#endif 
+
+		#ifdef _WIN32
+		CreateDirectoryA(name.c_str(), NULL);
+		#endif 
 	}
 
 	void write_head(std::string h)
@@ -108,4 +125,53 @@ struct StateOut
 	//	name = ss.str();
 	//	return name;
 	//}
+};
+
+
+struct FuncTimer
+{
+private:
+	std::map <std::string, double> timer;
+	std::string active;
+	double t1, t2, dt, total;
+public:
+	FuncTimer()
+	{
+		t1 = t2 = dt = total = 0;
+	}
+	void start(std::string s)
+	{
+		active = s;
+		t1 = clock();
+	}
+	void end(std::string s)
+	{
+		t2 = clock();
+		dt = (t2 - t1) / CLOCKS_PER_SEC;
+		if (s == active)
+		{
+			timer[s] += dt;
+		}
+	}
+
+	std::string get_info()
+	{
+		int n = timer.size();
+		std::ostringstream oss;
+		oss << "Calculation time in seconds. Number of cases: " << n << ".\n";
+
+		for (auto& it : timer)
+		{
+			oss << it.first << ": " << it.second <<  std::endl;
+		}
+		return oss.str();
+	}
+
+	void show_info()
+	{
+		std::cout << get_info() << std::endl;
+	}
+	
+
+
 };

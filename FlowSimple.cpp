@@ -107,7 +107,7 @@ void FlowSolver::form_u_matrix_for_simple(SparseMatrix &M, double *b)
 				return V.boundary.get_value(side) * coef * S / (0.5 * h);
 		}
 
-		ERROR("wrong bc");
+		MYERROR("wrong bc");
 		return 0.0;
 	};
 	auto index = [](Side side, int l, int off, int off2)
@@ -503,11 +503,19 @@ void FlowSolver::form_u_rhs_for_simple(double* b, bool reset)
 }
 
 
+void FlowSolver::guessed_velocity_for_simple()
+{
+	timer.start("guessed_u");
+	
+	form_big_rhs(B, true);
+	itsol.solveGS(U, U0, B, NV, SM);
 
-
+	timer.end("guessed_u");
+}
 
 void FlowSolver::poisson_equation_for_p_prime()
 {
+	timer.start("p_prime");
 	double tau_p = 30.25 * pow(fmin(fmin(hx, hy), hz), 2);
 	int iter_p = 0;
 	double res, res0 = 0;
@@ -559,9 +567,11 @@ void FlowSolver::poisson_equation_for_p_prime()
 
 
 
-	while (eps > eps0 * res0 && eps > 1e-12)
+	//while (eps > eps0 * res0)
+	while(true)
 	{
-		if (iter_p > iter_limit) break;
+		iter_p = iter_p + 1;
+		//if (iter_p > iter_limit) break;
 		res = 0;
 		for (int k = 0; k < nz; k++) {
 			for (int j = 0; j < ny; j++) {
@@ -580,14 +590,35 @@ void FlowSolver::poisson_equation_for_p_prime()
 		eps = abs(res - res0);
 		res0 = res;
 
+
+		double max = 0;
+		double dif;
+		for (int l = 0; l < N; l++)
+		{
+			dif = abs(p_prime[l] - buffer[l]);
+			if (dif > max)
+				max = dif;
+		}
+		if (max < eps0)	break;
+
+		if (eps < 1e-12) break;
+
 		p_prime.transfer_data_to(buffer);
-		iter_p = iter_p + 1;
+
 		//if (iter_p % 10000 == 0)	cout << "iter_p: " << iter_p << " res: " << res << " eps: " << eps << endl;
 		//if (iter_p % 10000 == 0)	cout << "eps: " << abs(res - res0) << " " << eps << endl;
 		
 		//if (k > 1000) break;
+
+		
 	}
-	iter_limit = iter_p;
+	//iter_limit = iter_p;
+	
+	timer.end("p_prime");
+
+	if (iter == 1) ofstream f("p_prime.dat");
+	ofstream f("p_prime.dat", ios_base::app);
+	f << iter << " " << iter_p << " " << eps << " " << res << endl;
 
 }
 
@@ -683,6 +714,7 @@ void FlowSolver::poisson_equation_for_p_prime()
 
 void FlowSolver::correction_for_simple()
 {
+	timer.start("correction");
 	double alpha = 0.8;
 
 	for (int k = 0; k < nz; k++) {
@@ -721,6 +753,7 @@ void FlowSolver::correction_for_simple()
 		}
 	}
 
+	timer.end("correction");
 }
 
 
@@ -748,13 +781,27 @@ void FlowSolver::solve_simple(int steps_at_ones)
 
 			double div = check_div();
 			if (sq % 100 == 0) print(div)
-			if (div < 1e-4) break;
+				if (div < 1e-4) break;
 		}
 
 		ux.transfer_data_to(vx);
 		uy.transfer_data_to(vy);
 		if (q % 100 == 0) print(ux(nx / 2, ny / 2, 0) << " " << check_div());
 	}
+
+
+	auto FF = [this](int j)
+		{
+			double dp = P.boundary.get_value(Side::east) - P.boundary.get_value(Side::west);
+			double y = vx.y_(j);
+			return Re * 0.5 * (dp) / Lx * (y * y - y * Ly);
+		};
+
+	for (int j = 0; j < ny; j++)
+	{
+		cout << fixed << vx.y_(j) << " " << vx(0, j, 0) << " " << vx(nx / 2, j, 0) << " " << FF(j) << endl;
+	}
+
 }
 
 void FlowSolver::solve_system(int steps_at_ones)
@@ -775,26 +822,22 @@ void FlowSolver::solve_system(int steps_at_ones)
 		while (true)
 		{
 			sq++;
-			timer("form_rhs", form_big_rhs(B, true);)
-			timer("solveGS", itsol.solveGS(U, U0, B, Nvx + Nvy, SM);)
-			timer("p_prime poisson", poisson_equation_for_p_prime();)
-			timer("correction", correction_for_simple();)
-			
-			
+			guessed_velocity_for_simple();
+			poisson_equation_for_p_prime();
+			correction_for_simple();
 
 			double div = check_div();
 			if (sq % 100 == 0) print("div = " << div)
-			if (div < 1e-4) break;
+				if (div < 1e-7) break;
 		}
 
 		ux.transfer_data_to(vx);
 		uy.transfer_data_to(vy);
 
-		timer("heat",
 		form_rhs_for_heat_equation(b, true);
 		itsol.solveGS(T.get_ptr(), T0.get_ptr(), b, N, sm);
 		//solve_heat_equation_explicitly();
-		)
+
 
 		//if (q % 100 == 0) print(uy(nx / 4, ny / 2, 0) << " " << check_div());
 		

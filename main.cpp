@@ -13,10 +13,10 @@ int main(int argc, char** argv)
 {
 	Configuration config;
 
-	int nx = 20;
-	int ny = 20;
+	int nx = 40;
+	int ny = 40;
 	int nz = 1;
-	config.set_domain_LxLyLz(1, 1, 0.4);
+	config.set_domain_LxLyLz(1,1, 0.4);
 	config.set_cell_number(nx, ny, nz);
 
 	config.tau = 1e+100;
@@ -27,7 +27,7 @@ int main(int argc, char** argv)
 	config.show_parameters();
 
 
-	solver.Ra = 2550;
+	solver.Ra = 5000;
 	solver.Pr = 1;
 	solver.grav.x = 0;
 	solver.grav.y = 1;
@@ -35,17 +35,21 @@ int main(int argc, char** argv)
 	solver.T.boundary.set_boundary(Side::north, MathBoundary::Dirichlet, 0);
 	solver.T0.boundary = solver.T.boundary;
 
+	//solver.set_boundary(Side::west, PhysBoundary::Inlet, 1);
+	//solver.set_boundary(Side::east, PhysBoundary::Outlet, 0);
 
-	
 
-	solver.solve_system(1000000);
+	//solver.solve_simple(1000);
+
+	solver.solve_system(10000);
+	solver.write_fields();
+	solver.finalize();
 
 
 	solver.uy.show_max_min();
-	solver.uy.write3D(0, 1, 0);
-
-	solver.SM.recover_full_with_rhs(5, solver.B);
+	//solver.SM.recover_full_with_rhs(5, solver.B);
 
 	cout << "end" << endl;
+
 	return 0;
 }

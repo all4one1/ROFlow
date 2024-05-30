@@ -8,7 +8,7 @@ FlowSolver::FlowSolver(Configuration config)
 	nz = config.nz;
 
 	N = nx * ny * nz;
-	
+	Nvx = Nvy = Nvz = 0;
 	off = ny == 1 ? 0 : nx;
 	off2 = nz == 1 ? 0 : nx * ny;
 	
@@ -213,6 +213,7 @@ double FlowSolver::check_div()
 
 void FlowSolver::statistics(double &Ek, double &Vmax)
 {
+	timer.start("statistics");
 	Ek = 0;
 	Vmax = 0;
 	double ux_ = 0, uy_ = 0, uz_ = 0;
@@ -231,4 +232,42 @@ void FlowSolver::statistics(double &Ek, double &Vmax)
 		}
 	}
 
+	timer.end("statistics");
+}
+
+void FlowSolver::write_fields()
+{
+	ofstream w("results\\field.dat");
+
+	w << "x, y, z, ux, uy, uz, P, T" << endl;
+
+	double ux_ = 0, uy_ = 0, uz_ = 0;
+	double x = 0, y = 0, z = 0;
+	for (int k = 0; k < nz; k++) {
+		for (int j = 0; j < ny; j++) {
+			for (int i = 0; i < nx; i++) {
+				x = P.x_(i);
+				if (dim > 1) y = P.y_(j);
+				if (dim > 2) z = P.z_(k);
+
+				ux_ = 0.5 * (ux(i + 1, j, k) + ux(i, j, k));
+				if (dim > 1) uy_ = 0.5 * (uy(i, j + 1, k) + uy(i, j, k));
+				if (dim > 2) uz_ = 0.5 * (uz(i, j, k + 1) + uz(i, j, k));
+
+				w << x << " " << y << " " << z << " ";
+				w << ux_ << " " << uy_ << " " << uz_ << " ";
+				w << P(i, j, k) << " " << T(i, j, k) << " ";
+				
+				w << endl;
+			}
+		}
+	}
+	
+}
+
+void FlowSolver::finalize()
+{
+	ofstream w("results\\report.dat");
+	
+	w << timer.get_info() << endl;
 }

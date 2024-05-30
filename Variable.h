@@ -141,7 +141,7 @@ struct Boundary
 			return retrieve_from_deriv(side, f_at_border);
 		else if (b[side].type == MathBoundary::Dirichlet)
 			return b[side].value;
-		ERROR("type operator()");
+		MYERROR("type operator()");
 		return NAN;
 	}
 	double get_value(Side side, double f_at_border)
@@ -149,14 +149,14 @@ struct Boundary
 		if (b[side].type == MathBoundary::Neumann)
 			return retrieve_from_deriv(side, f_at_border);
 		else
-			ERROR("incorrect bc type");
+			MYERROR("incorrect bc type");
 	}
 	double get_value(Side side)
 	{
 		if (b[side].type == MathBoundary::Dirichlet)
 			return b[side].value;
 		else
-			ERROR("incorrect bc type");
+			MYERROR("incorrect bc type");
 	}
 
 	One& operator[](Side side)
@@ -423,7 +423,7 @@ struct ScalarVariable
 			return GETFZ(k, k + 1);
 			break;
 		default:
-			ERROR("get at side");
+			MYERROR("get at side");
 			break;
 		}
 	}
@@ -918,8 +918,8 @@ struct Velocity : public ScalarVariable
 	double get_for_vx_cell(Side side, int i, int j = 0, int k = 0)
 	{
 		#ifdef DEBUG
-		if (i <= 0) print("Error: i == 0");
-		if (i >= nx) print("Error: i == nx");
+		if (i <= 0) print("MYERROR: i == 0");
+		if (i >= nx) print("MYERROR: i == nx");
 		#endif // DEBUG
 
 		if (type == Component::x)
@@ -1087,15 +1087,15 @@ struct Velocity : public ScalarVariable
 		}
 
 		#ifdef DEBUG
-		print("error");
+		print("MYERROR");
 		#endif // DEBUG
 		return 0.0;
 	}
 	double get_for_vy_cell(Side side, int i, int j, int k = 0)
 	{
 		#ifdef DEBUG
-		if (j <= 0) print("Error: j == 0");
-		if (j >= ny) print("Error: j == ny");
+		if (j <= 0) print("MYERROR: j == 0");
+		if (j >= ny) print("MYERROR: j == ny");
 		#endif // DEBUG
 
 		if (type == Component::x)
@@ -1260,15 +1260,15 @@ struct Velocity : public ScalarVariable
 			}
 		}
 		#ifdef DEBUG
-		print("error");
+		print("MYERROR");
 		#endif // DEBUG
 		return 0.0;
 	}
 	double get_for_vz_cell(Side side, int i, int j, int k)
 	{
 		#ifdef DEBUG
-		if (k <= 0) print("Error: k == 0");
-		if (k >= ny) print("Error: k == nz");
+		if (k <= 0) print("MYERROR: k == 0");
+		if (k >= ny) print("MYERROR: k == nz");
 		#endif // DEBUG
 
 		if (type == Component::x)
@@ -1473,7 +1473,7 @@ struct Velocity : public ScalarVariable
 					return GETDX(i + 1, i);
 			}
 		}
-		ERROR("Velocity");
+		MYERROR("Velocity");
 		return 0.0;
 	}
 	double get_dy_for_vx_cell(Side side, int i, int j, int k = 0)
@@ -1496,7 +1496,7 @@ struct Velocity : public ScalarVariable
 					return GETDY(j + 1, j);
 			}
 		}
-		ERROR("Velocity");
+		MYERROR("Velocity");
 		return 0.0;
 	}
 	double get_dz_for_vx_cell(Side side, int i, int j, int k)
@@ -1518,7 +1518,7 @@ struct Velocity : public ScalarVariable
 					return GETDZ(k + 1, k);
 			}
 		}
-		ERROR("Velocity");
+		MYERROR("Velocity");
 		return 0.0;
 	}
 
@@ -1540,7 +1540,7 @@ struct Velocity : public ScalarVariable
 				else
 					return GETDX(i + 1, i);
 			}
-			ERROR("Velocity");
+			MYERROR("Velocity");
 			return 0.0;
 		}
 	}
@@ -1554,7 +1554,7 @@ struct Velocity : public ScalarVariable
 			if (side == Side::north)
 				return GETDY(j + 1, j);
 		}
-		ERROR("Velocity");
+		MYERROR("Velocity");
 		return 0.0;
 	}
 	double get_dz_for_vy_cell(Side side, int i, int j, int k)
@@ -1576,7 +1576,7 @@ struct Velocity : public ScalarVariable
 					return GETDZ(k + 1, k);
 			}
 		}
-		ERROR("Velocity");
+		MYERROR("Velocity");
 		return 0.0;
 	}
 
@@ -1598,7 +1598,7 @@ struct Velocity : public ScalarVariable
 				else
 					return GETDX(i + 1, i);
 			}
-			ERROR("Velocity");
+			MYERROR("Velocity");
 			return 0.0;
 		}
 	}
@@ -1622,7 +1622,7 @@ struct Velocity : public ScalarVariable
 					return GETDY(j + 1, j);
 			}
 		}
-		ERROR("Velocity");
+		MYERROR("Velocity");
 		return 0.0;
 	}
 	double get_dz_for_vz_cell(Side side, int i, int j, int k)

@@ -7,10 +7,10 @@
 #include <map>
 
 
-#define REDUCED 0
+#define REDUCED 1
 
 
-#define timer(name, func) {double start_ = clock();  func;  double end_ = clock(); m_timer[name] += (end_ - start_) / CLOCKS_PER_SEC;}
+#define m_timer(name, func) {double start_ = clock();  func;  double end_ = clock(); m_timer[name] += (end_ - start_) / CLOCKS_PER_SEC;}
 
 using namespace std;
 enum class PhysBoundary
@@ -34,9 +34,8 @@ public:
 	Velocity ux, uy, uz;
 	Velocity ddx, ddy, ddz;
 	ScalarVariable P, P0, T, T0, p_prime, buffer, bufferU;
-	double* vx_, * vy_, * vz_, * p;
+	double* vx_, * vy_, * vz_;
 
-	double* p0, * dp, * dp0;
 	double* V, * V0, *U, *U0, * B, *Ap,  *b;
 	SparseMatrix SM, sm;
 	int nx, ny, nz, off, off2, N;
@@ -50,6 +49,7 @@ public:
 	int iter_limit = 1000;
 	std::map <Side, PhysBoundary> phys_bc;
 	std::map <std::string, double> m_timer;
+	FuncTimer timer;
 	IterativeSolver itsol;
 	Checker kinetic_check;
 	StateOut stats;
@@ -76,6 +76,7 @@ public:
 
 	void form_u_matrix_for_simple(SparseMatrix& M, double* b);
 	void form_u_rhs_for_simple(double* b, bool reset = false);
+	void guessed_velocity_for_simple();
 	void poisson_equation_for_p_prime();
 	void poisson_equation_for_p_prime2();
 	void correction2();
@@ -85,6 +86,8 @@ public:
 	double check_div();
 
 	void statistics(double& Ek, double& Vmax);
+	void write_fields();
+	void finalize();
 
 
 	void form_matrix_test(SparseMatrix& M, double* b);

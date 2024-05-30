@@ -23,6 +23,7 @@ struct Configuration
 		tau = 1.0;
 		Lx = Ly = Lz = 1;
 		hx = hy = hz = 1;
+		dV = 1;
 		nx = ny = nz = N = 1;
 		off = off2 = 0;
 		Sx = Sy = Sz = 0;
