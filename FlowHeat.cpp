@@ -43,6 +43,8 @@ void FlowSolver::solve_heat_equation_explicitly(int steps_at_ones)
 void FlowSolver::form_matrix_for_heat_equation(SparseMatrix &M, double *b)
 {
 	timer.start("matrix_formation");
+
+	M.reset();
 	struct Contribution
 	{
 		std::map<Side, double> m;

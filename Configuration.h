@@ -89,6 +89,28 @@ struct Configuration
 		hz = Lz / nz;
 		set_surfaces();
 	}
+	void set_uniform(int n_, const char *s, double Lx_, double Ly_ = 1, double Lz_ = 1)
+	{
+		if (s == "1D") dim = 1;
+		else if (s == "2D") dim = 2;
+		else if (s == "3D") dim = 3;
+		else { std::cout << "Wrong dimension" << std::endl; return; }
+		double h = 1.0 / n_;
+		hx = hy = hz = h;
+		Lx = Lx_;
+		Ly = Ly_;
+		Lz = Lz_;
+
+		nx = int(Lx / h);
+		ny = int(Ly / h);
+		nz = int(Lz / h);
+		if (dim < 3) nz = 1;
+		if (dim < 2) ny = 1;
+
+		set_cell_number(nx, ny, nz);
+	}
+
+
 	void set_surfaces()
 	{
 		if (nz > 1)

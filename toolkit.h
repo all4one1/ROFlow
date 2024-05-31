@@ -3,6 +3,6 @@
 #define pause {std::cout << "Pause at line: " << __LINE__ << " in file: " << __FILENAME__  << std::endl; system("pause"); }
 #define MYERROR(message) print(message); throw std::invalid_argument(message); 
 
-
 void allocM(double** f, int N);
-void alloc(double** f, int N);
+size_t alloc(double** f, int N);
+

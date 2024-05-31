@@ -6,8 +6,7 @@
 #include "Extras.h"
 #include <map>
 
-
-#define REDUCED 1
+#define REDUCED 0
 
 
 #define m_timer(name, func) {double start_ = clock();  func;  double end_ = clock(); m_timer[name] += (end_ - start_) / CLOCKS_PER_SEC;}
@@ -45,7 +44,7 @@ public:
 	double P_in = 0, P_out = 0, dP = 0.0;
 	StaticVector grav, vibr, dens;
 	double tau, total_time = 0.0, compute_time = 0.0;
-	size_t iter = 0;
+	size_t iter = 0, bytes_allocated = 0;
 	int iter_limit = 1000;
 	std::map <Side, PhysBoundary> phys_bc;
 	std::map <std::string, double> m_timer;
@@ -88,6 +87,7 @@ public:
 	void statistics(double& Ek, double& Vmax);
 	void write_fields();
 	void finalize();
+	void reset();
 
 
 	void form_matrix_test(SparseMatrix& M, double* b);

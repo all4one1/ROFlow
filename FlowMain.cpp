@@ -96,18 +96,18 @@ FlowSolver::FlowSolver(Configuration config)
 	uz = Velocity(Component::z, nx, ny, nz, hx, hy, hz, false, &U[stride2]);
 
 
-	vx_prime = Velocity(Component::x, nx, ny, nz, hx, hy, hz);
-	vy_prime = Velocity(Component::y, nx, ny, nz, hx, hy, hz);
-	vz_prime = Velocity(Component::z, nx, ny, nz, hx, hy, hz);
+	//vx_prime = Velocity(Component::x, nx, ny, nz, hx, hy, hz);
+	//vy_prime = Velocity(Component::y, nx, ny, nz, hx, hy, hz);
+	//vz_prime = Velocity(Component::z, nx, ny, nz, hx, hy, hz);
 
-	ddx = Velocity(Component::x, nx, ny, nz, hx, hy, hz);
-	ddy = Velocity(Component::y, nx, ny, nz, hx, hy, hz);
-	ddz = Velocity(Component::z, nx, ny, nz, hx, hy, hz);
+	//ddx = Velocity(Component::x, nx, ny, nz, hx, hy, hz);
+	//ddy = Velocity(Component::y, nx, ny, nz, hx, hy, hz);
+	//ddz = Velocity(Component::z, nx, ny, nz, hx, hy, hz);
 
 	buffer = ScalarVariable(nx, ny, nz, hx, hy, hz); 
 	bufferU = ScalarVariable(nx, ny, nz, hx, hy, hz);
 	P = ScalarVariable(nx, ny, nz, hx, hy, hz);
-	P0 = ScalarVariable(nx, ny, nz, hx, hy, hz);
+	//P0 = ScalarVariable(nx, ny, nz, hx, hy, hz);
 	p_prime = ScalarVariable(nx, ny, nz, hx, hy, hz);
 	
 	T = ScalarVariable(nx, ny, nz, hx, hy, hz);
@@ -265,9 +265,22 @@ void FlowSolver::write_fields()
 	
 }
 
+
+void FlowSolver::reset()
+{
+	iter = 0;
+	total_time = 0;
+}
 void FlowSolver::finalize()
 {
-	ofstream w("results\\report.dat");
-	
-	w << timer.get_info() << endl;
+	ofstream report("results\\report.dat");
+	report << timer.get_info() << endl;
+
+
+	double Ek, Vmax;
+	statistics(Ek, Vmax);
+
+	stats.write({ total_time, timer.get("total"), Ra, Ek, Vmax});
+
+	write_fields();
 }

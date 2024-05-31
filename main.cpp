@@ -13,21 +13,24 @@ int main(int argc, char** argv)
 {
 	Configuration config;
 
-	int nx = 40;
-	int ny = 40;
+	int nx = 20;
+	int ny = 20;
 	int nz = 1;
-	config.set_domain_LxLyLz(1,1, 0.4);
-	config.set_cell_number(nx, ny, nz);
+	//config.set_domain_LxLyLz(1,1, 0.4);
+	//config.set_cell_number(nx, ny, nz);
+
+	config.set_uniform(20, "2D", 10.0, 1.0);
+
 
 	config.tau = 1e+100;
 	config.tau = 0.001;
-	config.dim = 3;
+	
 
 	FlowSolver solver(config);
 	config.show_parameters();
 
 
-	solver.Ra = 5000;
+	solver.Ra = 2100;
 	solver.Pr = 1;
 	solver.grav.x = 0;
 	solver.grav.y = 1;
@@ -41,13 +44,25 @@ int main(int argc, char** argv)
 
 	//solver.solve_simple(1000);
 
-	solver.solve_system(10000);
-	solver.write_fields();
+	solver.timer.start("total");
+
+	double R = 1750;
+	//for (double R = 2000; R > 1500; R = R - 50)
+	{
+		solver.reset();
+		solver.Ra = R;
+		solver.solve_system(3000);
+		solver.finalize();
+	}
+
+	solver.timer.end("total");
+
 	solver.finalize();
 
 
+
 	solver.uy.show_max_min();
-	//solver.SM.recover_full_with_rhs(5, solver.B);
+	//solver.SM.save_full_matrix_with_rhs(5, solver.B);
 
 	cout << "end" << endl;
 

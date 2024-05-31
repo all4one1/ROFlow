@@ -63,7 +63,7 @@ struct StateOut
 	std::map<std::string, double> m;
 	std::map<std::string, double*> mp;
 	std::ofstream file;
-	std::string defname = "stats.dat";
+	std::string defname = "results\\stats.dat";
 	size_t iter = 0;
 	StateOut()
 	{
@@ -131,26 +131,47 @@ struct StateOut
 struct FuncTimer
 {
 private:
-	std::map <std::string, double> timer;
+	std::map <std::string, double> timer, t1, t2;
 	std::string active;
-	double t1, t2, dt, total;
+	double dt, total;
 public:
 	FuncTimer()
 	{
-		t1 = t2 = dt = total = 0;
+		dt = total = 0;
 	}
 	void start(std::string s)
 	{
 		active = s;
-		t1 = clock();
+		t1[s] = clock();
 	}
 	void end(std::string s)
 	{
-		t2 = clock();
-		dt = (t2 - t1) / CLOCKS_PER_SEC;
-		if (s == active)
+		if (t1.find(s) == t1.end())
 		{
-			timer[s] += dt;
+			std::cout << "this trigger not started" << std::endl;
+			return;
+		}
+		else
+		{
+			t2[s] = clock();
+			dt = (t2[s] - t1[s]) / CLOCKS_PER_SEC;
+			//if (s == active)
+			{
+				timer[s] += dt;
+			}
+		}
+	}
+
+	double get(std::string s)
+	{
+		if (timer.find(s) == timer.end())
+		{
+			std::cout << "this trigger not started" << std::endl;
+			return 0.0;
+		}
+		else
+		{
+			return timer[s];
 		}
 	}
 
