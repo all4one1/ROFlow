@@ -11,18 +11,13 @@ using std::ofstream;
 
 struct IterativeSolver
 {
-	int k = 0, write_i = 0, limit = 500;
-	double eps_iter = 1e-8;
+	int k = 0, write_i = 0, limit = 1000;
+	double eps_iter = 1e-6;
 	ofstream w;
 	IterativeSolver()
 	{
 
 	}
-
-	
-	
-	// a double pointer or class with [][]
-
 
 	void solveGS(double* f, double* f0, double* bb, int NN, SparseMatrix &M, int limit_ = 0)
 	{
@@ -60,8 +55,6 @@ struct IterativeSolver
 			if (max < eps_iter)	break;
 		}
 	}
-
-
 	void solveJacobi(double* f, double* f0, double* bb, int NN, SparseMatrix& M)
 	{
 		k = 0;
@@ -89,8 +82,6 @@ struct IterativeSolver
 			if (max < eps_iter)	break;
 		}
 	}
-
-
 
 	void write()
 	{

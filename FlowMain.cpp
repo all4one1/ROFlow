@@ -80,7 +80,8 @@ FlowSolver::FlowSolver(Configuration config)
 	alloc(&B, NV);
 	alloc(&Ap, NV);
 
-	sm.resize(N);
+	SMt.resize(N);
+	SMc.resize(N);
 	alloc(&b, N);
 
 	vx_ = &V[0];
@@ -109,12 +110,24 @@ FlowSolver::FlowSolver(Configuration config)
 	P = ScalarVariable(nx, ny, nz, hx, hy, hz);
 	//P0 = ScalarVariable(nx, ny, nz, hx, hy, hz);
 	p_prime = ScalarVariable(nx, ny, nz, hx, hy, hz);
-	
+
+	SF = ScalarVariable(nx, ny, nz, hx, hy, hz);
+	SF.set_all_boundaries(MathBoundary::Dirichlet);
+	SF0 = ScalarVariable(nx, ny, nz, hx, hy, hz);
+	SF0.set_all_boundaries(MathBoundary::Dirichlet);
+	bufferVibr = ScalarVariable(nx, ny, nz, hx, hy, hz);
+
 	T = ScalarVariable(nx, ny, nz, hx, hy, hz);
 	T0 = ScalarVariable(nx, ny, nz, hx, hy, hz);
 
-	grav.set_directly(0, 1, 0);
+	C = ScalarVariable(nx, ny, nz, hx, hy, hz);
+	C0 = ScalarVariable(nx, ny, nz, hx, hy, hz);
 
+	grav.set_directly_xyz(0, 1, 0);
+	vibr.set_directly_xyz(0, 1, 0);
+
+	stats.open();
+	temporal.open(false, "temporal.dat");
 }
 
 
@@ -235,11 +248,11 @@ void FlowSolver::statistics(double &Ek, double &Vmax)
 	timer.end("statistics");
 }
 
-void FlowSolver::write_fields()
+void FlowSolver::write_fields(std::string path)
 {
-	ofstream w("results\\field.dat");
+	ofstream w(path);
 
-	w << "x, y, z, ux, uy, uz, P, T" << endl;
+	w << "x, y, z, ux, uy, uz, P, T, C, SF" << endl;
 
 	double ux_ = 0, uy_ = 0, uz_ = 0;
 	double x = 0, y = 0, z = 0;
@@ -256,7 +269,8 @@ void FlowSolver::write_fields()
 
 				w << x << " " << y << " " << z << " ";
 				w << ux_ << " " << uy_ << " " << uz_ << " ";
-				w << P(i, j, k) << " " << T(i, j, k) << " ";
+				w << P(i, j, k) << " " << T(i, j, k) << " " << C(i, j, k) << " ";
+				w << SF(i, j, k) << " ";
 				
 				w << endl;
 			}
@@ -270,17 +284,19 @@ void FlowSolver::reset()
 {
 	iter = 0;
 	total_time = 0;
+	check_Ek = Checker();
 }
 void FlowSolver::finalize()
 {
-	ofstream report("results\\report.dat");
-	report << timer.get_info() << endl;
+	//ofstream report("results\\report.dat");
+	//report << timer.get_info() << endl;
 
 
 	double Ek, Vmax;
 	statistics(Ek, Vmax);
 
-	stats.write({ total_time, timer.get("total"), Ra, Ek, Vmax});
+	stats.write_header("Ra, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif");
+	stats.write({ Ra, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif});
 
 	write_fields();
 }

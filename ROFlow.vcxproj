@@ -131,6 +131,7 @@
   <ItemGroup>
     <ClCompile Include="FlowProjection.cpp" />
     <ClCompile Include="FlowMain.cpp" />
+    <ClCompile Include="form_matrix_and_rhs.cpp" />
     <ClCompile Include="FromOuterSparse\SparseMatrix.cpp" />
     <ClCompile Include="FromOuterSparse\SparseMatrix2.cpp" />
     <ClCompile Include="main.cpp" />

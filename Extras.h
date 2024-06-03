@@ -11,9 +11,10 @@ struct Checker
 {
 	std::vector<double> Ek;
 	size_t N, i, itotal;
-	double eps = 1e-15;
+	double eps = 1e-7;
 	double dEk = 0;
-	Checker(size_t n = 10)
+	double dif = 0, res = 0, long_dif = 0;
+	Checker(size_t n = 20)
 	{
 		N = n;
 		itotal = 0;
@@ -31,29 +32,35 @@ struct Checker
 		i = itotal % N;
 
 		Ek[i] = f;
-		if (itotal < N) return false;
-
-		double av = 0.0;
-		for (size_t k = 0; k < N; k++)
-		{
-			av += Ek[k];
-		} av = av / N;
+		if (itotal < 2) return false;
 
 		dEk = Ek[i] - Ek[(itotal - 1) % N];
-
-		//double res = tanh(eps / abs(av - Ek[i]));
-
-		double d = (abs(dEk) / Ek[i]);
-		double res = tanh(eps / d);
+		dif = (abs(dEk) / Ek[i]);
+		res = tanh(eps / dif);
 		if (print)
 		{
 			std::cout << "Ek = " << Ek[i] << ", dEk = " << dEk;
 			std::cout << ", converged: " << 100 * res << " %";
 			std::cout << std::endl;
 		}
-
 		if (res > 0.99999) return true;
-		else return false;
+
+
+
+		if (itotal > N*2)
+		{
+			double av = 0.0;
+			for (size_t k = 0; k < N; k++)
+			{
+				av += Ek[k];
+			} av = av / N;
+			//long_dif = tanh(eps / abs(av - Ek[i]));
+			long_dif = abs(av - Ek[i]);
+
+			if (long_dif < 1e-7 && av > 1e-5) return true;
+		}
+		
+		return false;
 	}
 };
 
@@ -63,12 +70,33 @@ struct StateOut
 	std::map<std::string, double> m;
 	std::map<std::string, double*> mp;
 	std::ofstream file;
-	std::string defname = "results\\stats.dat";
 	size_t iter = 0;
+	bool header = false;
 	StateOut()
 	{
-		file.open(defname, std::ios::app);
 		create_folder("results");
+	}
+
+	void open(bool append = true, std::string path = "results\\stats.dat")
+	{
+		if (append)
+		{
+			file.open(path, std::ios_base::app);
+			if (file_empty(path))
+			{
+				header = false;
+			}
+			else
+			{
+				header = true;
+				file << std::endl;
+			}
+		}
+		else
+		{
+			file.open(path);
+			header = false;
+		}	
 	}
 
 	void create_folder(std::string name)
@@ -83,11 +111,13 @@ struct StateOut
 		#endif 
 	}
 
-	void write_head(std::string h)
+	void write_header(std::string h, bool forced = false)
 	{
-		if (iter == 0)
+		if (header == false || forced == true)
+		{
 			file << h << std::endl;
-		iter++;
+			header = true;
+		}
 	}
 
 	void write(std::vector<double> v)
@@ -98,22 +128,12 @@ struct StateOut
 		iter++;
 	}
 
-	void write()
+	bool file_empty(std::string s)
 	{
-		iter++;
-		if (iter == 1)
-		{
-			for (auto& it : mp)	file << it.first << " ";
-			file << std::endl;
-		}
+		std::ifstream pFile(s);
+		return pFile.peek() == std::ifstream::traits_type::eof();
+	}
 
-		for (auto& it : mp)	file << *(it.second) << " ";
-		file << std::endl;
-	}
-	void add(std::string name, double &f)
-	{
-		mp[name] = &f;
-	}
 
 	//std::string int_to_str(int i)
 	//{
@@ -148,7 +168,7 @@ public:
 	{
 		if (t1.find(s) == t1.end())
 		{
-			std::cout << "this trigger not started" << std::endl;
+			std::cout << s + " trigger not started" << std::endl;
 			return;
 		}
 		else
@@ -166,7 +186,7 @@ public:
 	{
 		if (timer.find(s) == timer.end())
 		{
-			std::cout << "this trigger not started" << std::endl;
+			std::cout << s + " trigger not started" << std::endl;
 			return 0.0;
 		}
 		else
@@ -193,6 +213,10 @@ public:
 		std::cout << get_info() << std::endl;
 	}
 	
-
+	void write_info(std::string path = "results\\report.dat")
+	{
+		std::ofstream file(path);
+		file << get_info() << std::endl;
+	}
 
 };

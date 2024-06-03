@@ -493,6 +493,40 @@ struct ScalarVariable
 			break;
 		}
 	}
+	double get_shifted_deriv(Component comp, int i, int j = 0, int k = 0)
+	{
+		switch (comp)
+		{
+		case Component::x:
+			if (i == 0)
+				return boundary.normal_deriv(Side::west, GETVALUE(0, j, k));
+			else if (i == nx)
+				return boundary.normal_deriv(Side::east, GETVALUE(nx - 1, j, k));
+			else
+				return GETDX(i, i - 1);
+			break;
+		case Component::y:
+			if (j == 0)
+				return boundary.normal_deriv(Side::south, GETVALUE(i, 0, k));
+			else if (j == ny)
+				return boundary.normal_deriv(Side::north, GETVALUE(i, ny - 1, k));
+			else
+				return GETDY(j, j - 1);
+			break;
+		case Component::z:
+			if (k == 0)
+				return boundary.normal_deriv(Side::front, GETVALUE(i, j, 0));
+			else if (k == nz)
+				return boundary.normal_deriv(Side::back, GETVALUE(i, j, nz - 1));
+			else
+				return GETDZ(k, k - 1);
+			break;
+		default:
+			return 0;
+			break;
+		}
+	}
+
 
 
 	double* get_ptr()
@@ -604,6 +638,15 @@ struct ScalarVariable
 
 	}
 
+	void set_all_boundaries(MathBoundary type, double val = 0.0)
+	{
+		boundary.set_boundary(Side::west,  type, val);
+		boundary.set_boundary(Side::east,  type, val);
+		boundary.set_boundary(Side::south, type, val);
+		boundary.set_boundary(Side::north, type, val);
+		boundary.set_boundary(Side::front, type, val);
+		boundary.set_boundary(Side::back, type, val);
+	}
 	void set_linear()
 	{
 		double FW = 0, FE = 0;
@@ -1737,7 +1780,7 @@ struct StaticVector
 		y = sin(a * rad) * cos(b * rad);
 		z = sin(b * rad);
 	}
-	void set_directly(double x_, double y_ = 0, double z_ = 0)
+	void set_directly_xyz(double x_, double y_ = 0, double z_ = 0)
 	{
 		x = x_;
 		y = y_;
@@ -1749,4 +1792,22 @@ struct StaticVector
 		z = z / l;
 	}
 
+	double operator() (Component c) const
+	{
+		switch (c)
+		{
+		case Component::x:
+			return x;
+			break;
+		case Component::y:
+			return y;
+			break;
+		case Component::z:
+			return z;
+			break;
+		default:
+			return 0;
+			break;
+		}
+	}
 };

@@ -8,9 +8,6 @@
 
 #define REDUCED 0
 
-
-#define m_timer(name, func) {double start_ = clock();  func;  double end_ = clock(); m_timer[name] += (end_ - start_) / CLOCKS_PER_SEC;}
-
 using namespace std;
 enum class PhysBoundary
 {
@@ -28,30 +25,29 @@ struct FlowSolver
 	
 public:
 	//physical fields:
-	Velocity vx,  vy, vz;
-	Velocity vx_prime, vy_prime, vz_prime;
+	Velocity vx, vy, vz;
 	Velocity ux, uy, uz;
-	Velocity ddx, ddy, ddz;
-	ScalarVariable P, P0, T, T0, p_prime, buffer, bufferU;
+	ScalarVariable P, P0, T, T0, C, C0, SF, SF0, p_prime;
+	ScalarVariable buffer, bufferU, bufferVibr;
 	double* vx_, * vy_, * vz_;
 
 	double* V, * V0, *U, *U0, * B, *Ap,  *b;
-	SparseMatrix SM, sm;
+	SparseMatrix SM, SMt, SMc;
 	int nx, ny, nz, off, off2, N;
 	int dim, stride, stride2, Nvx, Nvy, Nvz, NV;
 	double hx, hy, hz, Sx, Sy, Sz, Lx, Ly, Lz, dV;
-	double Re = 1, Ra = 1, Pr = 1, Gr = 1;
+	double Re = 1, Ra = 0, Rav = 0, Pr = 1, Gr = 0, Le = 1, K = 0;
 	double P_in = 0, P_out = 0, dP = 0.0;
 	StaticVector grav, vibr, dens;
-	double tau, total_time = 0.0, compute_time = 0.0;
+	double tau, total_time = 0.0;
 	size_t iter = 0, bytes_allocated = 0;
 	int iter_limit = 1000;
 	std::map <Side, PhysBoundary> phys_bc;
-	std::map <std::string, double> m_timer;
 	FuncTimer timer;
 	IterativeSolver itsol;
-	Checker kinetic_check;
+	Checker check_Ek;
 	StateOut stats;
+	StateOut temporal;
 
 	FlowSolver(Configuration config);
 
@@ -67,38 +63,33 @@ public:
 	void projection_poisson_for_pressure();
 	void projection_true_velocity();
 
-	void solve_heat_equation_explicitly(int steps_at_ones = 1);
 	void form_matrix_for_heat_equation(SparseMatrix& M, double* b);
 	void form_rhs_for_heat_equation(double* b, bool reset = false);
-
+	void form_matrix_for_concentration_equation(SparseMatrix& M, double* b);
+	void form_rhs_for_concentration_equation(double* b, bool reset = false);
 	void solve_heat_equation(int steps_at_ones = 1);
+	void solve_heat_equation_explicitly(int steps_at_ones = 1);
 
-	void form_u_matrix_for_simple(SparseMatrix& M, double* b);
-	void form_u_rhs_for_simple(double* b, bool reset = false);
 	void guessed_velocity_for_simple();
 	void poisson_equation_for_p_prime();
-	void poisson_equation_for_p_prime2();
-	void correction2();
 	void correction_for_simple();
-	void solve_simple(int steps_at_ones = 1);
-	void solve_system(int steps_at_ones = 1);
+	void solve_simple(size_t steps_at_ones = SIZE_MAX);
+	void solve_system(size_t steps_at_ones = SIZE_MAX);
+	
 	double check_div();
-
 	void statistics(double& Ek, double& Vmax);
-	void write_fields();
+	void write_fields(std::string path = "results\\field.dat");
 	void finalize();
 	void reset();
 
 
 	void form_matrix_test(SparseMatrix& M, double* b);
 	void form_rhs_test(double* b, bool reset);
-
+	
 	void form_big_matrix(SparseMatrix& M, double* b);
-
 	void form_big_rhs(double* b, bool reset);
 
-
-
+	void poisson_equation_pulsation_stream_function();
 };
 
 
