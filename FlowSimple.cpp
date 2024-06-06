@@ -5,8 +5,8 @@
 void FlowSolver::guessed_velocity_for_simple()
 {
 	timer.start("guessed_u");
-	
-	form_big_rhs(B, true);
+	form_rhs_test(B, true);
+	//form_big_rhs(B, true);
 	itsol.solveGS(U, U0, B, NV, SM);
 
 	timer.end("guessed_u");
@@ -80,8 +80,6 @@ void FlowSolver::poisson_equation_for_p_prime()
 		abs_eps = abs(res - res0);
 		rel_eps = abs_eps / res0;
 		res0 = res;
-
-		//print(iter << " " << eps / res0 << " " << eps)
 		
 		
 		if (abs_eps < eps0*10 || rel_eps < eps0) break;
@@ -191,7 +189,7 @@ void FlowSolver::solve_simple(size_t steps_at_ones)
 
 	auto FF = [this](int j)
 		{
-			double dp = P.boundary.get_value(Side::east) - P.boundary.get_value(Side::west);
+			double dp = P.boundary.get_fixed_value(Side::east) - P.boundary.get_fixed_value(Side::west);
 			double y = vx.y_(j);
 			return Re * 0.5 * (dp) / Lx * (y * y - y * Ly);
 		};
@@ -207,7 +205,8 @@ void FlowSolver::solve_system(size_t steps_at_ones)
 {
 	if (iter == 0)
 	{
-		form_big_matrix(SM, B);
+		//form_big_matrix(SM, B);
+		form_matrix_test(SM, B);
 		form_matrix_for_heat_equation(SMt, b);
 	}
 	
@@ -242,7 +241,7 @@ void FlowSolver::solve_system(size_t steps_at_ones)
 		timer.end("T,C equations");
 
 
-		if (Rav != 0) poisson_equation_pulsation_stream_function();
+		//if (Rav != 0) poisson_equation_pulsation_stream_function();
 
 
 		//if (q % 100 == 0) print(uy(nx / 4, ny / 2, 0) << " " << check_div());

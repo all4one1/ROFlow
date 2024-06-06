@@ -62,7 +62,7 @@ void FlowSolver::form_big_matrix(SparseMatrix& M, double* b)
 	auto fixed_node = [b](Velocity& v, Side side, int l, Contribution& a)
 		{
 			a[l] = 1;
-			b[l] = v.boundary.get_value(side);
+			b[l] = v.boundary.get_fixed_value(side);
 		};
 
 	auto deriv_at_boundary = [b, &M](Velocity& v, Side side, int shift, double S, double h, double coef, int l, Contribution& a)
@@ -80,7 +80,7 @@ void FlowSolver::form_big_matrix(SparseMatrix& M, double* b)
 			if (v.boundary.type(side) == MathBoundary::Dirichlet)
 			{
 				a(Side::center) += PhysCoef * S / h;
-				b[l] += v.boundary.get_value(side) * S / h * PhysCoef;
+				b[l] += v.boundary.get_fixed_value(side) * S / h * PhysCoef;
 			}
 		};
 
@@ -427,16 +427,6 @@ void FlowSolver::form_big_matrix(SparseMatrix& M, double* b)
 
 void FlowSolver::form_big_rhs(double* b, bool reset)
 {
-	auto fixed_node = [](Velocity& V, int l, Side side, double S, double h, double coef, double f = 0)
-		{
-			double res = 0.0;
-			if (V.boundary.type(side) == MathBoundary::Dirichlet)
-				res = V.boundary.get_value(side);
-			else if (V.boundary.type(side) == MathBoundary::Neumann)
-				res = V.boundary.normal_deriv_oriented(side);
-
-			return res;
-		};
 	auto half_border = [](Velocity& V, int l, Side side, double S, double h, double coef, double f = 0)
 		{
 			double res = 0.0;
@@ -444,7 +434,7 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 				res = V.boundary.normal_deriv_oriented(side) * S * coef;
 			else if (V.boundary.type(side) == MathBoundary::Dirichlet)
 			{
-				res = V.boundary.get_value(side) * coef * S / (0.5 * h);
+				res = V.boundary.get_fixed_value(side) * coef * S / (0.5 * h);
 			}
 			else
 			{
@@ -456,7 +446,7 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 		{
 			double res = 0.0;
 			if (V.boundary.type(side) == MathBoundary::Dirichlet)
-				res = V.boundary.get_value(side) * coef * S / (h);
+				res = V.boundary.get_fixed_value(side) * coef * S / (h);
 			//else if (V.boundary.type(side) == MathBoundary::Neumann)
 			return res;
 		};
@@ -568,13 +558,17 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 								//fixed node
 								if (u.boundary.type(side) == MathBoundary::Dirichlet)
 								{
-									b[l] = u.boundary.get_value(side);
+									b[l] = u.boundary.get_fixed_value(side);
 									continue;
 								}
 								else if (u.boundary.type(side) == MathBoundary::Neumann)
 								{
 									b[l] = PhysCoef * u.boundary.normal_deriv_oriented(side) * SX;
 									//continue;
+								}
+								else if (u.boundary.type(side) == MathBoundary::Periodic)
+								{
+									// nothin to do
 								}
 							}
 							else if (i == 1)
@@ -593,7 +587,7 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 								//fixed node
 								if (u.boundary.type(side) == MathBoundary::Dirichlet)
 								{
-									b[l] = u.boundary.get_value(side);
+									b[l] = u.boundary.get_fixed_value(side);
 									continue;
 								}
 								else if (u.boundary.type(side) == MathBoundary::Neumann)
@@ -727,7 +721,7 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 								//fixed node
 								if (u.boundary.type(side) == MathBoundary::Dirichlet)
 								{
-									b[l] = u.boundary.get_value(side);
+									b[l] = u.boundary.get_fixed_value(side);
 									continue;
 								}
 								else if (u.boundary.type(side) == MathBoundary::Neumann)
@@ -752,7 +746,7 @@ void FlowSolver::form_big_rhs(double* b, bool reset)
 								//fixed node
 								if (u.boundary.type(side) == MathBoundary::Dirichlet)
 								{
-									b[l] = u.boundary.get_value(side);
+									b[l] = u.boundary.get_fixed_value(side);
 									continue;
 								}
 								else if (u.boundary.type(side) == MathBoundary::Neumann)

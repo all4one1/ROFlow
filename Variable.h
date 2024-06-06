@@ -38,17 +38,17 @@ enum class MathBoundary
 
 #define GETVALUE(i, j, k) v[(i) + off * (j) + off2 * (k)]
 
-#define GETFX(i2,i1) (GETVALUE((i2), j, k) + GETVALUE((i1), j, k)) * 0.5;
-#define GETFY(j2,j1_) (GETVALUE(i, (j2), k) + GETVALUE(i, (j1_), k)) * 0.5;
+#define GETFX(i2,i1) (GETVALUE((i2), j, k) + GETVALUE((i1), j, k)) * 0.5
+#define GETFY(j2,j1_) (GETVALUE(i, (j2), k) + GETVALUE(i, (j1_), k)) * 0.5
 #define GETFZ(k2,k1) (GETVALUE(i, j, (k2)) + GETVALUE(i, j, (k1))) * 0.5;
 
-#define GETDX(i2,i1) (GETVALUE((i2), j, k) - GETVALUE((i1), j, k)) / hx;
-#define GETDY(j2,j1_) (GETVALUE(i, (j2), k) - GETVALUE(i, (j1_), k)) / hy;
-#define GETDZ(k2,k1) (GETVALUE(i, j, (k2)) - GETVALUE(i, j, (k1))) / hz;
+#define GETDX(i2,i1) (GETVALUE((i2), j, k) - GETVALUE((i1), j, k)) / hx
+#define GETDY(j2,j1_) (GETVALUE(i, (j2), k) - GETVALUE(i, (j1_), k)) / hy
+#define GETDZ(k2,k1) (GETVALUE(i, j, (k2)) - GETVALUE(i, j, (k1))) / hz
 
-#define DIFFX(i2,i1) (GETVALUE((i2), j, k) - GETVALUE((i1), j, k));
-#define DIFFY(j2,j1_) (GETVALUE(i, (j2), k) - GETVALUE(i, (j1_), k));
-#define DIFFZ(k2,k1) (GETVALUE(i, j, (k2)) - GETVALUE(i, j, (k1)));
+#define DIFFX(i2,i1) (GETVALUE((i2), j, k) - GETVALUE((i1), j, k))
+#define DIFFY(j2,j1_) (GETVALUE(i, (j2), k) - GETVALUE(i, (j1_), k))
+#define DIFFZ(k2,k1) (GETVALUE(i, j, (k2)) - GETVALUE(i, j, (k1)))
 
 struct Boundary
 {
@@ -57,14 +57,17 @@ struct Boundary
 		double value;
 		double sign;
 		double h;
+		bool shifted = false;
 		MathBoundary type;	
 		One(double v = 0, double s = 0, double H = 0, MathBoundary t = MathBoundary::Neumann)
 			: value(v), sign(s), h(H), type(t) {}
 
 	};
 	std::map<Side, One> b;
-
 	int dim = 1;
+	double* v = nullptr;
+	int nx, ny, nz, off, off2;
+
 	Boundary(MathBoundary def_type = MathBoundary::Neumann, double def_value = 0.0,
 		double hx = 0, double hy = 0, double hz = 0)
 	{
@@ -74,13 +77,26 @@ struct Boundary
 		b[Side::north] = One(def_value, +1, hy, def_type);
 		b[Side::front] = One(def_value, -1, hz, def_type);
 		b[Side::back]  = One(def_value, +1, hz, def_type);
+		nx = ny = nz = off = off2 = 0;
 	}
-
+	void shifted_on(Side s)
+	{
+		b[s].shifted = true;
+	}
+	
+	void bind_with_field(double* p, int nx_, int ny_, int nz_, int off_, int off2_)
+	{
+		v = p;
+		nx = nx_;
+		ny = ny_;
+		nz = nz_;
+		off = off_;
+		off2 = off2_;
+	}
 	auto iterator(Side side)
 	{
 		return &b.find(side)->second;
 	}
-
 	MathBoundary type(Side side)
 	{
 		return b[side].type;
@@ -93,6 +109,34 @@ struct Boundary
 		if (v != 0.0) it->value = v;
 		if (h != 0.0) it->h = h;
  	}
+	void set_period_pair(Side s1, Side s2)
+	{
+		bool found = false;
+
+		auto check = [this, &found, &s1, &s2](bool ok)
+		{
+			if (ok)
+			{
+				double h1 = b[s1].h, h2 = b[s2].h;
+				double h = h1 + h2;
+				set_boundary(s1, MathBoundary::Periodic, 0.0, h);
+				set_boundary(s2, MathBoundary::Periodic, 0.0, h);
+				found = true;
+			}
+		};
+
+		check(s1 == Side::west && s2 == Side::east);
+		check(s2 == Side::west && s1 == Side::east);
+
+		check(s1 == Side::south && s2 == Side::north);
+		check(s2 == Side::south && s1 == Side::north);
+
+		check(s1 == Side::front && s2 == Side::back);
+		check(s2 == Side::front && s1 == Side::back);
+
+		if (!found) std::cout << "not adequate pair" << std::endl;
+	}
+
 	void set_steps(double hx_, double hy_ = 0, double hz_ = 0)
 	{
 		b[Side::west].h = b[Side::east].h = hx_;
@@ -104,26 +148,73 @@ struct Boundary
 		auto it = iterator(side);
 		return f + it->sign * it->h * it->value;
 	}
-	double normal_deriv(Side side, double v = 0)
+	double normal_deriv(Side side, int i = 0, int j = 0, int k = 0)
 	{
 		auto it = iterator(side);
 		if (it->type == MathBoundary::Neumann)
 			return it->value;
-		
-		return it->sign * (it->value - v) / (it->h);
-	}
-	double normal_difference(Side side, double v = 0)
-	{
-		return normal_deriv(side, v) * b[side].h;
+		if (it->type == MathBoundary::Periodic)
+		{
+			if (it->shifted == false)
+			{
+				switch (side)
+				{
+				case Side::west:
+				case Side::east:
+					return (GETVALUE(0, j, k) - GETVALUE(nx - 1, j, k)) / (it->h);
+					break;
+				case Side::south:
+				case Side::north:
+					return (GETVALUE(i, 0, k) - GETVALUE(i, ny - 1, k)) / (it->h);
+					break;
+				case Side::front:
+				case Side::back:
+					return (GETVALUE(i, j, 0) - GETVALUE(i, j, nz - 1)) / (it->h);
+					break;
+				default:
+					break;
+				}
+			} 
+			else
+			{
+				switch (side)
+				{
+				case Side::west:
+					return (GETVALUE(0, j, k) - GETVALUE(nx - 1, j, k)) / (it->h);
+					break;
+				case Side::east:
+					return (GETVALUE(1, j, k) - GETVALUE(nx, j, k)) / (it->h);
+					break;
+				case Side::south:
+					return (GETVALUE(i, 0, k) - GETVALUE(i, ny - 1, k)) / (it->h);
+					break;
+				case Side::north:
+					return (GETVALUE(i, 1, k) - GETVALUE(i, ny, k)) / (it->h);
+					break;
+				case Side::front:
+					return (GETVALUE(i, j, 0) - GETVALUE(i, j, nz - 1)) / (it->h);
+					break;
+				case Side::back:
+					return (GETVALUE(i, j, 1) - GETVALUE(i, j, nz)) / (it->h);
+					break;
+				default:
+					break;
+				}
+			}
+		}
+
+		return it->sign * (it->value - GETVALUE(i, j, k)) / (it->h);
 	}
 
-	double normal_deriv_oriented(Side side, double v = 0)
+	double normal_difference(Side side, int i = 0, int j = 0, int k = 0)
+	{
+		return normal_deriv(side, i, j, k) * b[side].h;
+	}
+
+	double normal_deriv_oriented(Side side, int i = 0, int j = 0, int k = 0)
 	{
 		auto it = iterator(side);
-		if (it->type == MathBoundary::Neumann)
-			return it->value * it->sign;
-
-		return it->sign * it->sign * (it->value - v) / (it->h);
+		return normal_deriv(side, i, j, k) * it->sign;
 	}
 	void show_boundary(Side side)
 	{
@@ -135,26 +226,77 @@ struct Boundary
 		std::cout << "sign: " << static_cast<int>(it->sign) << std::endl;
 		std::cout << "step,h: " << it->h << ", dim: " << dim << std::endl;
 	}
-	double operator()(Side side, double f_at_border = 0)
+	double operator()(Side side, int i = 0, int j = 0, int k = 0)
 	{
-		if (b[side].type == MathBoundary::Neumann)
-			return retrieve_from_deriv(side, f_at_border);
-		else if (b[side].type == MathBoundary::Dirichlet)
+		auto it = iterator(side);
+		if (it->type == MathBoundary::Neumann)
+			return retrieve_from_deriv(side, GETVALUE(i, j, k));
+		else if (it->type == MathBoundary::Dirichlet)
 			return b[side].value;
+		else if (it->type == MathBoundary::Periodic)
+		{
+			if (it->shifted == false)
+			{
+				switch (side)
+				{
+				case Side::west:
+				case Side::east:
+					return 0.5 * (GETVALUE(0, j, k) + GETVALUE(nx - 1, j, k));
+					break;
+				case Side::south:
+				case Side::north:
+					return 0.5 * (GETVALUE(i, 0, k) + GETVALUE(i, ny - 1, k));
+					break;
+				case Side::front:
+				case Side::back:
+					return 0.5 * (GETVALUE(i, j, 0) + GETVALUE(i, j, nz - 1));
+					break;
+				default:
+					break;
+				}
+			}
+			else
+			{
+				switch (side)
+				{
+				case Side::west:					
+					return 0.5 * (GETVALUE(0, j, k) + GETVALUE(nx - 1, j, k));
+					break;
+				case Side::east:
+					return 0.5 * (GETVALUE(1, j, k) + GETVALUE(nx, j, k));
+					break;
+				case Side::south:
+					return 0.5 * (GETVALUE(i, 0, k) + GETVALUE(i, ny - 1, k));
+					break;
+				case Side::north:
+					return 0.5 * (GETVALUE(i, 1, k) + GETVALUE(i, ny, k));
+					break;
+				case Side::front:
+					return 0.5 * (GETVALUE(i, j, 0) + GETVALUE(i, j, nz - 1));
+					break;
+				case Side::back:
+					return 0.5 * (GETVALUE(i, j, 1) + GETVALUE(i, j, nz));
+					break;
+				default:
+					break;
+				}
+			}
+		}
 		MYERROR("type operator()");
 		return NAN;
 	}
-	double get_value(Side side, double f_at_border)
+	double get_value_from_deriv(Side side, int i = 0, int j = 0, int k = 0)
 	{
 		if (b[side].type == MathBoundary::Neumann)
-			return retrieve_from_deriv(side, f_at_border);
+			return retrieve_from_deriv(side, GETVALUE(i, j, k));
 		else
 			MYERROR("incorrect bc type");
 	}
-	double get_value(Side side)
+	double get_fixed_value(Side side)
 	{
 		if (b[side].type == MathBoundary::Dirichlet)
 			return b[side].value;
+		//else if (b[side].type == MathBoundary::Periodic)
 		else
 			MYERROR("incorrect bc type");
 	}
@@ -164,6 +306,8 @@ struct Boundary
 		return b[side];
 	}
 };
+
+
 
 
 struct ScalarVariable
@@ -233,6 +377,8 @@ struct ScalarVariable
 			if (ptr != nullptr)
 				v = ptr;
 		}
+
+		boundary.bind_with_field(v, nx, ny, nz, off, off2);
 	}
 
 	double get_dx(Side side, int i, int j = 0, int k = 0)
@@ -240,7 +386,7 @@ struct ScalarVariable
 		if (side == Side::west)
 		{
 			if (i == 0)
-				return boundary.normal_deriv(side, GETVALUE(i, j, k));
+				return boundary.normal_deriv(side, i, j, k);
 			else
 				return GETDX(i, i - 1);
 		}
@@ -248,7 +394,7 @@ struct ScalarVariable
 		if (side == Side::east)
 		{
 			if (i == nx - 1)
-				return boundary.normal_deriv(side, GETVALUE(i, j, k));
+				return boundary.normal_deriv(side, i, j, k);
 			else
 				return GETDX(i + 1, i);
 		}
@@ -265,7 +411,7 @@ struct ScalarVariable
 		if (side == Side::south)
 		{
 			if (j == 0)
-				return boundary.normal_deriv(side, GETVALUE(i, j, k));
+				return boundary.normal_deriv(side, i, j, k);
 			else
 				return GETDY(j, j - 1);
 		}
@@ -273,7 +419,7 @@ struct ScalarVariable
 		if (side == Side::north)
 		{
 			if (j == ny - 1)
-				return boundary.normal_deriv(side, GETVALUE(i, j, k));
+				return boundary.normal_deriv(side, i, j, k);
 			else
 				return GETDY(j + 1, j);
 		}
@@ -290,14 +436,14 @@ struct ScalarVariable
 		if (side == Side::front)
 		{
 			if (k == 0)
-				return boundary.normal_deriv(side, GETVALUE(i, j, k));
+				return boundary.normal_deriv(side, i, j, k);
 			else
 				return GETDZ(k, k - 1);
 		}
 		if (side == Side::back)
 		{
 			if (k == nz - 1)
-				return boundary.normal_deriv(side, GETVALUE(i, j, k));
+				return boundary.normal_deriv(side, i, j, k);
 			else
 				return GETDZ(k + 1, k);
 		}
@@ -315,7 +461,7 @@ struct ScalarVariable
 		if (side == Side::west)
 		{
 			if (i <= 0)
-				return boundary.normal_difference(side, GETVALUE(0, j, k));
+				return boundary.normal_difference(side, 0, j, k);
 			else
 				return DIFFX(i, i - 1);
 		}
@@ -323,7 +469,7 @@ struct ScalarVariable
 		if (side == Side::east)
 		{
 			if (i >= nx - 1)
-				return boundary.normal_difference(side, GETVALUE(nx - 1, j, k));
+				return boundary.normal_difference(side, nx - 1, j, k);
 			else
 				return DIFFX(i + 1, i);
 		}
@@ -340,7 +486,7 @@ struct ScalarVariable
 		if (side == Side::south)
 		{
 			if (j <= 0)
-				return boundary.normal_difference(side, GETVALUE(i, 0, k));
+				return boundary.normal_difference(side, i, 0, k);
 			else
 				return DIFFY(j, j - 1);
 		}
@@ -348,7 +494,7 @@ struct ScalarVariable
 		if (side == Side::north)
 		{
 			if (j >= ny - 1)
-				return boundary.normal_difference(side, GETVALUE(i, ny - 1, k));
+				return boundary.normal_difference(side, i, ny - 1, k);
 			else
 				return DIFFY(j + 1, j);
 		}
@@ -365,14 +511,14 @@ struct ScalarVariable
 		if (side == Side::front)
 		{
 			if (k <= 0)
-				return boundary.normal_difference(side, GETVALUE(i, j, 0));
+				return boundary.normal_difference(side, i, j, 0);
 			else
 				return DIFFZ(k, k - 1);
 		}
 		if (side == Side::back)
 		{
 			if (k >= nz - 1)
-				return boundary.normal_difference(side, GETVALUE(i, j, nz - 1));
+				return boundary.normal_difference(side, i, j, nz - 1);
 			else
 				return DIFFZ(k + 1, k);
 		}
@@ -394,32 +540,32 @@ struct ScalarVariable
 		{
 		case Side::west:
 			if (i == 0) 
-				return boundary(side, GETVALUE(i, j, k));
+				return boundary(side, i, j, k);
 			return GETFX(i, i - 1);
 			break;
 		case Side::east:
 			if (i == nx - 1)
-				return boundary(side, GETVALUE(i, j, k));
+				return boundary(side, i, j, k);
 			return GETFX(i, i + 1);
 			break;
 		case Side::south:
 			if (j == 0)
-				return boundary(side, GETVALUE(i, j, k));
+				return boundary(side, i, j, k);
 			return GETFY(j, j - 1);
 			break;
 		case Side::north:
 			if (j == ny - 1)
-				return boundary(side, GETVALUE(i, j, k));
+				return boundary(side, i, j, k);
 			return GETFY(j, j + 1);
 			break;
 		case Side::front:
 			if (k == 0)
-				return boundary(side, GETVALUE(i, j, k));
+				return boundary(side, i, j, k);
 			return GETFZ(k, k - 1);
 			break;
 		case Side::back:
 			if (k == nz - 1)
-				return boundary(side, GETVALUE(i, j, k));
+				return boundary(side, i, j, k);
 			return GETFZ(k, k + 1);
 			break;
 		default:
@@ -433,25 +579,25 @@ struct ScalarVariable
 		{
 		case Component::x:
 			if (i == 0)
-				return boundary(Side::west, GETVALUE(0, j, k));
+				return boundary(Side::west, 0, j, k);
 			else if (i == nx)
-				return boundary(Side::east, GETVALUE(nx - 1, j, k));
+				return boundary(Side::east, nx - 1, j, k);
 			else
 				return GETFX(i, i - 1);
 			break;
 		case Component::y:
 			if (j == 0)
-				return boundary(Side::south, GETVALUE(i, 0, k));
+				return boundary(Side::south, i, 0, k);
 			else if (j == ny)
-				return boundary(Side::north, GETVALUE(i, ny - 1, k));
+				return boundary(Side::north, i, ny - 1, k);
 			else
 				return GETFY(j, j - 1);
 			break;
 		case Component::z:
 			if (k == 0)
-				return boundary(Side::front, GETVALUE(i, j, 0));
+				return boundary(Side::front, i, j, 0);
 			else if (k == nz)
-				return boundary(Side::back, GETVALUE(i, j, nz - 1));
+				return boundary(Side::back, i, j, nz - 1);
 			else
 				return GETFZ(k, k - 1);
 			break;
@@ -466,25 +612,25 @@ struct ScalarVariable
 		{
 		case Component::x:
 			if (i == 0)
-				return boundary.normal_difference(Side::west, GETVALUE(0, j, k));
+				return boundary.normal_difference(Side::west, 0, j, k);
 			else if (i == nx)
-				return boundary.normal_difference(Side::east, GETVALUE(nx - 1, j, k));
+				return boundary.normal_difference(Side::east, nx - 1, j, k);
 			else
 				return DIFFX(i, i - 1);
 			break;
 		case Component::y:
 			if (j == 0)
-				return boundary.normal_difference(Side::south, GETVALUE(i, 0, k));
+				return boundary.normal_difference(Side::south, i, 0, k);
 			else if (j == ny)
-				return boundary.normal_difference(Side::north, GETVALUE(i, ny - 1, k));
+				return boundary.normal_difference(Side::north, i, ny - 1, k);
 			else
 				return DIFFY(j, j - 1);
 			break;
 		case Component::z:
 			if (k == 0)
-				return boundary.normal_difference(Side::front, GETVALUE(i, j, 0));
+				return boundary.normal_difference(Side::front, i, j, 0);
 			else if (k == nz)
-				return boundary.normal_difference(Side::back, GETVALUE(i, j, nz - 1));
+				return boundary.normal_difference(Side::back, i, j, nz - 1);
 			else
 				return DIFFZ(k, k - 1);
 			break;
@@ -499,25 +645,25 @@ struct ScalarVariable
 		{
 		case Component::x:
 			if (i == 0)
-				return boundary.normal_deriv(Side::west, GETVALUE(0, j, k));
+				return boundary.normal_deriv(Side::west, 0, j, k);
 			else if (i == nx)
-				return boundary.normal_deriv(Side::east, GETVALUE(nx - 1, j, k));
+				return boundary.normal_deriv(Side::east, nx - 1, j, k);
 			else
 				return GETDX(i, i - 1);
 			break;
 		case Component::y:
 			if (j == 0)
-				return boundary.normal_deriv(Side::south, GETVALUE(i, 0, k));
+				return boundary.normal_deriv(Side::south, i, 0, k);
 			else if (j == ny)
-				return boundary.normal_deriv(Side::north, GETVALUE(i, ny - 1, k));
+				return boundary.normal_deriv(Side::north, i, ny - 1, k);
 			else
 				return GETDY(j, j - 1);
 			break;
 		case Component::z:
 			if (k == 0)
-				return boundary.normal_deriv(Side::front, GETVALUE(i, j, 0));
+				return boundary.normal_deriv(Side::front, i, j, 0);
 			else if (k == nz)
-				return boundary.normal_deriv(Side::back, GETVALUE(i, j, nz - 1));
+				return boundary.normal_deriv(Side::back, i, j, nz - 1);
 			else
 				return GETDZ(k, k - 1);
 			break;
@@ -654,19 +800,19 @@ struct ScalarVariable
 		double FF = 0, FB = 0;
 
 		if (boundary.type(Side::west) == MathBoundary::Dirichlet)
-			FW = boundary.get_value(Side::west);
+			FW = boundary.get_fixed_value(Side::west);
 		if (boundary.type(Side::east) == MathBoundary::Dirichlet)
-			FE = boundary.get_value(Side::east);
+			FE = boundary.get_fixed_value(Side::east);
 
 		if (boundary.type(Side::south) == MathBoundary::Dirichlet)
-			FS = boundary.get_value(Side::south);
+			FS = boundary.get_fixed_value(Side::south);
 		if (boundary.type(Side::north) == MathBoundary::Dirichlet)
-			FN = boundary.get_value(Side::north);
+			FN = boundary.get_fixed_value(Side::north);
 
 		if (boundary.type(Side::front) == MathBoundary::Dirichlet)
-			FF = boundary.get_value(Side::front);
+			FF = boundary.get_fixed_value(Side::front);
 		if (boundary.type(Side::back) == MathBoundary::Dirichlet)
-			FB = boundary.get_value(Side::back);
+			FB = boundary.get_fixed_value(Side::back);
 
 		double Lx = hx * nx;
 		double Ly = hy * ny;
@@ -775,13 +921,34 @@ struct Velocity : public ScalarVariable
 		boundary.set_boundary(Side::back,  MathBoundary::Dirichlet, 0.0);
 		boundary.set_steps(hx, hy, hz);
 
-		if (type == Component::x) boundary.set_steps(hx, 0.5 * hy, 0.5 * hz);
-		if (type == Component::y) boundary.set_steps(0.5 * hx, hy, 0.5 * hz);
-		if (type == Component::z) boundary.set_steps(0.5 * hx, 0.5 * hy, hz);
+		if (type == Component::x) boundary.set_steps(0.5 * hx, 0.5 * hy, 0.5 * hz);
+		if (type == Component::y) boundary.set_steps(0.5 * hx, 0.5 * hy, 0.5 * hz);
+		if (type == Component::z) boundary.set_steps(0.5 * hx, 0.5 * hy, 0.5 * hz);
 
 		if (type == Component::x) x0 = 0;
 		if (type == Component::y) y0 = 0;
 		if (type == Component::z) z0 = 0;
+
+		if (type == Component::x)
+		{
+			boundary.shifted_on(Side::west); 
+			boundary.shifted_on(Side::east);
+		}
+		if (type == Component::y)
+		{
+			boundary.shifted_on(Side::south);
+			boundary.shifted_on(Side::north);
+		}		
+		if (type == Component::z)
+		{
+			boundary.shifted_on(Side::front);
+			boundary.shifted_on(Side::back);
+		}
+
+		//if (type == Component::x) boundary.bind_with_field(v, nx + 1, ny, nz, off, off2);
+		//if (type == Component::y) boundary.bind_with_field(v, nx, ny + 1, nz, off, off2);
+		//if (type == Component::z) boundary.bind_with_field(v, nx, ny, nz + 1, off, off2);
+		boundary.bind_with_field(v, nx, ny, nz, off, off2);
 	}
 
 	void get_at_side(Side side, int i, int j = 0, int k = 0) = delete;
@@ -802,7 +969,7 @@ struct Velocity : public ScalarVariable
 			if (side == Side::south)
 			{
 				if (j == 0)
-					return 0.0;
+					return boundary(side, i, j, k);
 				else
 					return 0.25 * (
 						GETVALUE(i, j, k) +
@@ -813,7 +980,7 @@ struct Velocity : public ScalarVariable
 			if (side == Side::north)
 			{
 				if (j == ny - 1)
-					return 0.0;
+					return boundary(side, i, j, k);
 				else
 					return 0.25 * (
 						GETVALUE(i, j, k) +
@@ -824,7 +991,7 @@ struct Velocity : public ScalarVariable
 			if (side == Side::front)
 			{
 				if (k == 0)
-					return 0.0;
+					return boundary(side, i, j, k);
 				else
 					return 0.25 * (
 						GETVALUE(i, j, k) +
@@ -835,7 +1002,7 @@ struct Velocity : public ScalarVariable
 			if (side == Side::back)
 			{
 				if (k == nz - 1)
-					return 0.0;
+					return boundary(side, i, j, k);
 				else
 					return 0.25 * (
 						GETVALUE(i, j, k) +
@@ -853,7 +1020,7 @@ struct Velocity : public ScalarVariable
 			if (side == Side::west)
 			{
 				if (i == 0)
-					return 0.0;
+					return boundary(side, i, j, k);
 				else
 					return 0.25 * (
 						GETVALUE(i, j, k) +
@@ -864,7 +1031,7 @@ struct Velocity : public ScalarVariable
 			if (side == Side::east)
 			{
 				if (i == nx - 1)
-					return 0.0;
+					return boundary(side, i, j, k);
 				else
 					return 0.25 * (
 						GETVALUE(i, j, k) +
@@ -883,7 +1050,7 @@ struct Velocity : public ScalarVariable
 			if (side == Side::front)
 			{
 				if (k == 0)
-					return 0.0;
+					return boundary(side, i, j, k);
 				else
 					return 0.25 * (
 						GETVALUE(i, j, k) +
@@ -894,7 +1061,7 @@ struct Velocity : public ScalarVariable
 			if (side == Side::back)
 			{
 				if (k == 0)
-					return 0.0;
+					return boundary(side, i, j, k);
 				else
 					return 0.25 * (
 						GETVALUE(i, j, k) +
@@ -912,7 +1079,7 @@ struct Velocity : public ScalarVariable
 			if (side == Side::west)
 			{
 				if (i == 0)
-					return 0.0;
+					return boundary(side, i, j, k);
 				else
 					return 0.25 * (
 						GETVALUE(i, j, k) +
@@ -923,7 +1090,7 @@ struct Velocity : public ScalarVariable
 			if (side == Side::east)
 			{
 				if (i == 0)
-					return 0.0;
+					return boundary(side, i, j, k);
 				else
 					return 0.25 * (
 						GETVALUE(i, j, k) +
@@ -934,7 +1101,7 @@ struct Velocity : public ScalarVariable
 			if (side == Side::south)
 			{
 				if (j == 0)
-					return 0.0;
+					return boundary(side, i, j, k);
 				else
 					return 0.25 * (
 						GETVALUE(i, j, k) +
@@ -960,48 +1127,43 @@ struct Velocity : public ScalarVariable
 	}
 	double get_for_vx_cell(Side side, int i, int j = 0, int k = 0)
 	{
-		#ifdef DEBUG
-		if (i <= 0) print("MYERROR: i == 0");
-		if (i >= nx) print("MYERROR: i == nx");
-		#endif // DEBUG
-
 		if (type == Component::x)
 		{
 			if (side == Side::west)
 			{
+				if (i == 0)
+					return boundary(side, i, j, k);
 				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i - 1, j, k));
 			}
 			if (side == Side::east)
 			{
+				if (i == nx)
+					return boundary(side, i, j, k);
 				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i + 1, j, k));
 			}
 			if (side == Side::south)
 			{
 				if (j == 0)
-					return boundary(side);
-				else
-					return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j - 1, k));
+					return boundary(side, i, j, k);
+				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j - 1, k));
 			}
 			if (side == Side::north)
 			{
 				if (j == ny - 1)
-					return boundary(side);
-				else
-					return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j + 1, k));
+					return boundary(side, i, j, k);
+				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j + 1, k));
 			}
 			if (side == Side::front)
 			{
 				if (k == 0)
-					return boundary(side);
-				else
-					return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j, k - 1));
+					return boundary(side, i, j, k);
+				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j, k - 1));
 			}
 			if (side == Side::back)
 			{
 				if (k == nz - 1)
-					return boundary(side);
-				else
-					return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j, k + 1));
+					return boundary(side, i, j, k);
+				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j, k + 1));
 			}
 			if (side == Side::center)
 			{
@@ -1010,54 +1172,66 @@ struct Velocity : public ScalarVariable
 		}
 		if (type == Component::y)
 		{
-			if (side == Side::west)
-			{
-				return 0.5 * (GETVALUE(i - 1, j, k) + GETVALUE(i - 1, j + 1, k));
-			}
-			if (side == Side::east)
-			{
-				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j + 1, k));
-			}
+			//if (side == Side::west)
+			//{
+			//	if (i == 0) 
+			//		return 0.5 * (boundary(side, i, j, k) + boundary(side, i, j + 1, k));
+			//	return 0.5 * (GETVALUE(i - 1, j, k) + GETVALUE(i - 1, j + 1, k));
+			//}
+			//if (side == Side::east)
+			//{
+			//	if (i == nx)
+			//		return 0.5 * (boundary(side, i, j, k) + boundary(side, i, j + 1, k));
+			//	return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j + 1, k));
+			//}
 			if (side == Side::south)
 			{
+				//wtf
+				if (i == 0) 
+					return boundary(Side::west, i, j, k);
+				else if (i == nx)
+					return boundary(Side::east, i, j, k);
 				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i - 1, j, k));
 			}
 			if (side == Side::north)
 			{
+				if (i == 0)
+					return boundary(Side::west, i, j + 1, k);
+				else if (i == nx)
+					return boundary(Side::east, i, j + 1, k);
 				return 0.5 * (GETVALUE(i, j + 1, k) + GETVALUE(i - 1, j + 1, k));
 			}
-			if (side == Side::front)
-			{
-				if (k == 0)
-						return boundary(side);
-				else
-					return 0.125 * (
-							GETVALUE(i, j, k) +
-							GETVALUE(i, j + 1, k) +
-							GETVALUE(i - 1, j + 1, k) +
-							GETVALUE(i - 1, j, k) +
 
-							GETVALUE(i, j, k - 1) +
-							GETVALUE(i, j + 1, k - 1) +
-							GETVALUE(i - 1, j + 1, k - 1) +
-							GETVALUE(i - 1, j, k - 1));
-			}
-			if (side == Side::back)
-			{
-				if (k == nz - 1)
-					return boundary(side);
-				else
-					return 0.125 * (
-						GETVALUE(i, j, k) +
-						GETVALUE(i, j + 1, k) +
-						GETVALUE(i - 1, j + 1, k) +
-						GETVALUE(i - 1, j, k) +
-
-							GETVALUE(i, j, k + 1) +
-							GETVALUE(i, j + 1, k + 1) +
-							GETVALUE(i - 1, j + 1, k + 1) +
-							GETVALUE(i - 1, j, k + 1));
-			}
+			//if (side == Side::front)
+			//{
+			//	if (k == 0)
+			//		return boundary(side, i, j, k);
+			//	else
+			//		return 0.125 * (
+			//				GETVALUE(i, j, k) +
+			//				GETVALUE(i, j + 1, k) +
+			//				GETVALUE(i - 1, j + 1, k) +
+			//				GETVALUE(i - 1, j, k) +
+			//				GETVALUE(i, j, k - 1) +
+			//				GETVALUE(i, j + 1, k - 1) +
+			//				GETVALUE(i - 1, j + 1, k - 1) +
+			//				GETVALUE(i - 1, j, k - 1));
+			//}
+			//if (side == Side::back)
+			//{
+			//	if (k == nz - 1)
+			//		return boundary(side, i, j, k);
+			//	else
+			//		return 0.125 * (
+			//			GETVALUE(i, j, k) +
+			//			GETVALUE(i, j + 1, k) +
+			//			GETVALUE(i - 1, j + 1, k) +
+			//			GETVALUE(i - 1, j, k) +
+			//				GETVALUE(i, j, k + 1) +
+			//				GETVALUE(i, j + 1, k + 1) +
+			//				GETVALUE(i - 1, j + 1, k + 1) +
+			//				GETVALUE(i - 1, j, k + 1));
+			//}
 			if (side == Side::center)
 			{
 				return 0.25 * (
@@ -1069,54 +1243,60 @@ struct Velocity : public ScalarVariable
 		}
 		if (type == Component::z)
 		{
-			if (side == Side::west)
-			{
-				return 0.5 * (GETVALUE(i - 1, j, k) + GETVALUE(i - 1, j, k + 1));
-			}
-			if (side == Side::east)
-			{
-				return 0.5 * (GETVALUE(i + 1, j, k) + GETVALUE(i + 1, j, k + 1));
-			}
-			if (side == Side::south)
-			{
-				if (j == 0)
-					return 0.0;
-				else
-					return 0.125 * (
-						GETVALUE(i, j, k) +
-						GETVALUE(i, j, k + 1) +
-						GETVALUE(i - 1, j, k + 1) +
-						GETVALUE(i - 1, j, k) +
-
-						GETVALUE(i, j - 1, k) +
-						GETVALUE(i, j - 1, k + 1) +
-						GETVALUE(i - 1, j - 1, k + 1) +
-						GETVALUE(i - 1, j - 1, k)
-						);
-			}
-			if (side == Side::north)
-			{
-				if (j == ny - 1)
-					return 0.0;
-				else
-					return 0.125 * (
-						GETVALUE(i, j, k) +
-						GETVALUE(i, j, k + 1) +
-						GETVALUE(i - 1, j, k + 1) +
-						GETVALUE(i - 1, j, k) +
-
-						GETVALUE(i, j + 1, k) +
-						GETVALUE(i, j + 1, k + 1) +
-						GETVALUE(i - 1, j + 1, k + 1) +
-						GETVALUE(i - 1, j + 1, k)
-						);
-			}
+			//if (side == Side::west)
+			//{
+			//	return 0.5 * (GETVALUE(i - 1, j, k) + GETVALUE(i - 1, j, k + 1));
+			//}
+			//if (side == Side::east)
+			//{
+			//	return 0.5 * (GETVALUE(i + 1, j, k) + GETVALUE(i + 1, j, k + 1));
+			//}
+			//if (side == Side::south)
+			//{
+			//	if (j == 0)
+			//		return boundary(side, i, j, k);
+			//	else
+			//		return 0.125 * (
+			//			GETVALUE(i, j, k) +
+			//			GETVALUE(i, j, k + 1) +
+			//			GETVALUE(i - 1, j, k + 1) +
+			//			GETVALUE(i - 1, j, k) +
+			//			GETVALUE(i, j - 1, k) +
+			//			GETVALUE(i, j - 1, k + 1) +
+			//			GETVALUE(i - 1, j - 1, k + 1) +
+			//			GETVALUE(i - 1, j - 1, k)
+			//			);
+			//}
+			//if (side == Side::north)
+			//{
+			//	if (j == ny - 1)
+			//		return boundary(side, i, j, k);
+			//	else
+			//		return 0.125 * (
+			//			GETVALUE(i, j, k) +
+			//			GETVALUE(i, j, k + 1) +
+			//			GETVALUE(i - 1, j, k + 1) +
+			//			GETVALUE(i - 1, j, k) +
+			//			GETVALUE(i, j + 1, k) +
+			//			GETVALUE(i, j + 1, k + 1) +
+			//			GETVALUE(i - 1, j + 1, k + 1) +
+			//			GETVALUE(i - 1, j + 1, k)
+			//			);
+			//}
 			if (side == Side::front)
 			{
+				if (i == 0)
+					return boundary(Side::west, i, j, k);
+				else if (i == nx)
+					return boundary(Side::east, i, j, k);
 				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i - 1, j, k));
 			}
 			if (side == Side::back)
 			{
+				if (i == 0)
+					return boundary(Side::west, i, j, k + 1);
+				else if (i == nx)
+					return boundary(Side::east, i, j, k + 1);
 				return 0.5 * (GETVALUE(i, j, k + 1) + GETVALUE(i - 1, j, k + 1));
 			}
 			if (side == Side::center)
@@ -1128,69 +1308,72 @@ struct Velocity : public ScalarVariable
 					GETVALUE(i - 1, j, k));
 			}
 		}
-
-		#ifdef DEBUG
-		print("MYERROR");
-		#endif // DEBUG
+		
+		std::cout << "should be here" << std::endl;
 		return 0.0;
 	}
 	double get_for_vy_cell(Side side, int i, int j, int k = 0)
 	{
-		#ifdef DEBUG
-		if (j <= 0) print("MYERROR: j == 0");
-		if (j >= ny) print("MYERROR: j == ny");
-		#endif // DEBUG
-
 		if (type == Component::x)
 		{
 			if (side == Side::west)
 			{
+				if (j == 0)
+					return boundary(Side::south, i, j, k);
+				else if (j == ny)
+					return boundary(Side::north, i, j, k);
 				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j - 1, k));
 			}
 			if (side == Side::east)
 			{
+				if (j == 0)
+					return boundary(Side::south, i + 1, j, k);
+				else if (j == ny)
+					return boundary(Side::north, i + 1, j, k);
 				return 0.5 * (GETVALUE(i + 1, j, k) + GETVALUE(i + 1, j - 1, k));
 			}
-			if (side == Side::south)
-			{
-				return 0.5 * (GETVALUE(i, j - 1, k) + GETVALUE(i + 1, j - 1, k));
-			}
-			if (side == Side::north)
-			{
-				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i + 1, j, k));
-			}
-			if (side == Side::front)
-			{
-				if (k == 0)
-					return boundary(side);
-				else
-					return 0.125 * (
-						GETVALUE(i, j, k) +
-						GETVALUE(i, j - 1, k) +
-						GETVALUE(i + 1, j, k) +
-						GETVALUE(i + 1, j - 1, k) +
-
-						GETVALUE(i, j, k - 1) +
-						GETVALUE(i, j - 1, k - 1) +
-						GETVALUE(i + 1, j, k - 1) +
-						GETVALUE(i + 1, j - 1, k - 1));
-			}
-			if (side == Side::back)
-			{
-				if (k == nz - 1)
-					return boundary(side);
-				else
-					return 0.125 * (
-						GETVALUE(i, j, k) +
-						GETVALUE(i, j - 1, k) +
-						GETVALUE(i + 1, j, k) +
-						GETVALUE(i + 1, j - 1, k) +
-
-						GETVALUE(i, j, k + 1) +
-						GETVALUE(i, j - 1, k + 1) +
-						GETVALUE(i + 1, j, k + 1) +
-						GETVALUE(i + 1, j - 1, k + 1));
-			}
+			//if (side == Side::south)
+			//{
+			//	//if (j == 0)
+			//	//	return boundary(side, i, j, k);
+			//	//return 0.5 * (GETVALUE(i, j - 1, k) + GETVALUE(i + 1, j - 1, k));
+			//}
+			//if (side == Side::north)
+			//{
+			//	//if (j == ny)
+			//	//	return boundary(side, i, j, k);
+			//	//return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i + 1, j, k));
+			//}
+			//if (side == Side::front)
+			//{
+			//	//if (k == 0)
+			//	//	return boundary(side, i, j, k);
+			//	//else
+			//	//	return 0.125 * (
+			//	//		GETVALUE(i, j, k) +
+			//	//		GETVALUE(i, j - 1, k) +
+			//	//		GETVALUE(i + 1, j, k) +
+			//	//		GETVALUE(i + 1, j - 1, k) +
+			//	//		GETVALUE(i, j, k - 1) +
+			//	//		GETVALUE(i, j - 1, k - 1) +
+			//	//		GETVALUE(i + 1, j, k - 1) +
+			//	//		GETVALUE(i + 1, j - 1, k - 1));
+			//}
+			//if (side == Side::back)
+			//{
+			//	//if (k == nz - 1)
+			//	//	return boundary(side, i, j, k);
+			//	//else
+			//	//	return 0.125 * (
+			//	//		GETVALUE(i, j, k) +
+			//	//		GETVALUE(i, j - 1, k) +
+			//	//		GETVALUE(i + 1, j, k) +
+			//	//		GETVALUE(i + 1, j - 1, k) +
+			//	//		GETVALUE(i, j, k + 1) +
+			//	//		GETVALUE(i, j - 1, k + 1) +
+			//	//		GETVALUE(i + 1, j, k + 1) +
+			//	//		GETVALUE(i + 1, j - 1, k + 1));
+			//}
 			if (side == Side::center)
 			{
 				return 0.25 * (
@@ -1205,38 +1388,38 @@ struct Velocity : public ScalarVariable
 			if (side == Side::west)
 			{
 				if (i == 0)
-					return 0.0;
-				else
-					return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i - 1, j, k));
+					return boundary(side, i, j, k);
+				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i - 1, j, k));
 			}
 			if (side == Side::east)
 			{
 				if (i == nx - 1)
-					return 0.0;
-				else
-					return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i + 1, j, k));
+					return boundary(side, i, j, k);
+				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i + 1, j, k));
 			}
 			if (side == Side::south)
 			{
+				if (j == 0)
+					return boundary(side, i, j, k);
 				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j - 1, k));
 			}
 			if (side == Side::north)
 			{
+				if (j == ny)
+					return boundary(side, i, j, k);
 				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j + 1, k));
 			}
 			if (side == Side::front)
 			{
 				if (k == 0)
-					return 0.0;
-				else
-					return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j, k - 1));
+					return boundary(side, i, j, k);
+				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j, k - 1));
 			}
 			if (side == Side::back)
 			{
-				if (k == 0)
-					return 0.0;
-				else
-					return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j, k + 1));
+				if (k == nz - 1)
+					return boundary(side, i, j, k);
+				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j, k + 1));
 			}
 			if (side == Side::center)
 			{
@@ -1245,52 +1428,58 @@ struct Velocity : public ScalarVariable
 		}
 		if (type == Component::z)
 		{
-			if (side == Side::west)
-			{
-				if (i == 0)
-					return 0.0;
-				else
-					return 0.125 * (
-						GETVALUE(i, j, k) +
-						GETVALUE(i, j - 1, k + 1) +
-						GETVALUE(i, j, k + 1) +
-						GETVALUE(i, j - 1, k) +
-
-						GETVALUE(i - 1, j, k) +
-						GETVALUE(i - 1, j - 1, k + 1) +
-						GETVALUE(i - 1, j, k + 1) +
-						GETVALUE(i - 1, j - 1, k));
-			}
-			if (side == Side::east)
-			{
-				if (i == nx - 1)
-					return 0.0;
-				else
-					return 0.125 * (
-						GETVALUE(i, j, k) +
-						GETVALUE(i, j - 1, k + 1) +
-						GETVALUE(i, j, k + 1) +
-						GETVALUE(i, j - 1, k) +
-
-						GETVALUE(i + 1, j, k) +
-						GETVALUE(i + 1, j - 1, k + 1) +
-						GETVALUE(i + 1, j, k + 1) +
-						GETVALUE(i + 1, j - 1, k));
-			}
-			if (side == Side::south)
-			{
-				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j, k + 1));
-			}
-			if (side == Side::north)
-			{
-				return 0.5 * (GETVALUE(i, j + 1, k) + GETVALUE(i, j + 1, k + 1));
-			}
+			//if (side == Side::west)
+			//{
+			//	if (i == 0)
+			//		return boundary(side, i, j, k);
+			//	else
+			//		return 0.125 * (
+			//			GETVALUE(i, j, k) +
+			//			GETVALUE(i, j - 1, k + 1) +
+			//			GETVALUE(i, j, k + 1) +
+			//			GETVALUE(i, j - 1, k) +
+			//			GETVALUE(i - 1, j, k) +
+			//			GETVALUE(i - 1, j - 1, k + 1) +
+			//			GETVALUE(i - 1, j, k + 1) +
+			//			GETVALUE(i - 1, j - 1, k));
+			//}
+			//if (side == Side::east)
+			//{
+			//	if (i == nx - 1)
+			//		return boundary(side, i, j, k);
+			//	else
+			//		return 0.125 * (
+			//			GETVALUE(i, j, k) +
+			//			GETVALUE(i, j - 1, k + 1) +
+			//			GETVALUE(i, j, k + 1) +
+			//			GETVALUE(i, j - 1, k) +
+			//			GETVALUE(i + 1, j, k) +
+			//			GETVALUE(i + 1, j - 1, k + 1) +
+			//			GETVALUE(i + 1, j, k + 1) +
+			//			GETVALUE(i + 1, j - 1, k));
+			//}
+			//if (side == Side::south)
+			//{
+			//	return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j, k + 1));
+			//}
+			//if (side == Side::north)
+			//{
+			//	return 0.5 * (GETVALUE(i, j + 1, k) + GETVALUE(i, j + 1, k + 1));
+			//}
 			if (side == Side::front)
 			{
+				if (j == 0)
+					return boundary(Side::south, i, j, k);
+				else if (j == ny)
+					return boundary(Side::north, i, j, k);
 				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j - 1, k));
 			}
 			if (side == Side::back)
 			{
+				if (j == 0)
+					return boundary(Side::south, i, j, k + 1);
+				else if (j == ny)
+					return boundary(Side::north, i, j, k + 1);
 				return 0.5 * (GETVALUE(i, j, k + 1) + GETVALUE(i, j - 1, k + 1));
 			}
 			if (side == Side::center)
@@ -1302,133 +1491,140 @@ struct Velocity : public ScalarVariable
 					GETVALUE(i, j - 1, k));
 			}
 		}
-		#ifdef DEBUG
-		print("MYERROR");
-		#endif // DEBUG
+		
+
+		std::cout << "should be here" << std::endl;
 		return 0.0;
 	}
 	double get_for_vz_cell(Side side, int i, int j, int k)
 	{
-		#ifdef DEBUG
-		if (k <= 0) print("MYERROR: k == 0");
-		if (k >= ny) print("MYERROR: k == nz");
-		#endif // DEBUG
-
 		if (type == Component::x)
 		{
 			if (side == Side::west)
 			{
+				if (k == 0)
+					return boundary(Side::front, i, j, k);
+				else if (k == nz)
+					return boundary(Side::back, i, j, k);
 				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j, k - 1));
 			}
 			if (side == Side::east)
 			{
+				if (k == 0)
+					return boundary(Side::front, i + 1, j, k);
+				else if (k == nz)
+					return boundary(Side::back, i + 1, j, k);
 				return 0.5 * (GETVALUE(i + 1, j, k) + GETVALUE(i + 1, j, k - 1));
 			}
-			if (side == Side::south)
-			{
-				if (j == 0)
-					return 0.0;
-				else
-					return 0.125 * (
-						GETVALUE(i, j, k) +
-						GETVALUE(i, j, k - 1) +
-						GETVALUE(i + 1, j, k - 1) +
-						GETVALUE(i + 1, j, k) +
-
-						GETVALUE(i, j - 1, k) +
-						GETVALUE(i, j - 1, k - 1) +
-						GETVALUE(i + 1, j - 1, k - 1) +
-						GETVALUE(i + 1, j - 1, k));
-			}
-			if (side == Side::north)
-			{
-				if (j == ny - 1)
-					return 0.0;
-				else
-					return 0.125 * (
-						GETVALUE(i, j, k) +
-						GETVALUE(i, j, k - 1) +
-						GETVALUE(i + 1, j, k - 1) +
-						GETVALUE(i + 1, j, k) +
-
-						GETVALUE(i, j + 1, k) +
-						GETVALUE(i, j + 1, k - 1) +
-						GETVALUE(i + 1, j + 1, k - 1) +
-						GETVALUE(i + 1, j + 1, k));
-			}
-			if (side == Side::front)
-			{
-				if (k == 0)
-					return 0.0;
-				else
-					return 0.5 * (GETVALUE(i, j, k - 1) + GETVALUE(i + 1, j, k - 1));
-			}
-			if (side == Side::back)
-			{
-				if (k == nz - 1)
-					return 0.0;
-				else
-					return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i + 1, j, k));
-			}
-			if (side == Side::center)
-			{
-				return 0.25 * (
-					GETVALUE(i, j, k) +
-					GETVALUE(i, j, k - 1) +
-					GETVALUE(i + 1, j, k - 1) +
-					GETVALUE(i + 1, j, k));
-			}
+		//	if (side == Side::south)
+		//	{
+		//		if (j == 0)
+		//			return boundary(side, i, j, k);
+		//		else
+		//			return 0.125 * (
+		//				GETVALUE(i, j, k) +
+		//				GETVALUE(i, j, k - 1) +
+		//				GETVALUE(i + 1, j, k - 1) +
+		//				GETVALUE(i + 1, j, k) +
+		//				GETVALUE(i, j - 1, k) +
+		//				GETVALUE(i, j - 1, k - 1) +
+		//				GETVALUE(i + 1, j - 1, k - 1) +
+		//				GETVALUE(i + 1, j - 1, k));
+		//	}
+		//	if (side == Side::north)
+		//	{
+		//		if (j == ny - 1)
+		//			return boundary(side, i, j, k);
+		//		else
+		//			return 0.125 * (
+		//				GETVALUE(i, j, k) +
+		//				GETVALUE(i, j, k - 1) +
+		//				GETVALUE(i + 1, j, k - 1) +
+		//				GETVALUE(i + 1, j, k) +
+		//				GETVALUE(i, j + 1, k) +
+		//				GETVALUE(i, j + 1, k - 1) +
+		//				GETVALUE(i + 1, j + 1, k - 1) +
+		//				GETVALUE(i + 1, j + 1, k));
+		//	}
+		//	if (side == Side::front)
+		//	{
+		//		if (k == 0)
+		//			return boundary(side, i, j, k);
+		//		else
+		//			return 0.5 * (GETVALUE(i, j, k - 1) + GETVALUE(i + 1, j, k - 1));
+		//	}
+		//	if (side == Side::back)
+		//	{
+		//		if (k == nz - 1)
+		//			return boundary(side, i, j, k);
+		//		else
+		//			return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i + 1, j, k));
+		//	}
+		//	if (side == Side::center)
+		//	{
+		//		return 0.25 * (
+		//			GETVALUE(i, j, k) +
+		//			GETVALUE(i, j, k - 1) +
+		//			GETVALUE(i + 1, j, k - 1) +
+		//			GETVALUE(i + 1, j, k));
+		//	}
 		}
 		if (type == Component::y)
 		{
-			if (side == Side::west)
-			{
-				if (i == 0)
-					return 0.0;
-				else
-					return 0.125 * (
-						GETVALUE(i, j, k - 1) +
-						GETVALUE(i, j, k) +
-						GETVALUE(i, j + 1, k - 1) +
-						GETVALUE(i, j + 1, k) +
-
-						GETVALUE(i - 1, j, k - 1) +
-						GETVALUE(i - 1, j, k) +
-						GETVALUE(i - 1, j + 1, k - 1) +
-						GETVALUE(i - 1, j + 1, k));
-			}
-			if (side == Side::east)
-			{
-				if (i == nx - 1)
-					return 0.0;
-				else
-					return 0.125 * (
-						GETVALUE(i, j, k - 1) +
-						GETVALUE(i, j, k) +
-						GETVALUE(i, j + 1, k - 1) +
-						GETVALUE(i, j + 1, k) +
-
-						GETVALUE(i + 1, j, k - 1) +
-						GETVALUE(i + 1, j, k) +
-						GETVALUE(i + 1, j + 1, k - 1) +
-						GETVALUE(i + 1, j + 1, k));
-			}
+			//if (side == Side::west)
+			//{
+			//	if (i == 0)
+			//		return boundary(side, i, j, k);
+			//	else
+			//		return 0.125 * (
+			//			GETVALUE(i, j, k - 1) +
+			//			GETVALUE(i, j, k) +
+			//			GETVALUE(i, j + 1, k - 1) +
+			//			GETVALUE(i, j + 1, k) +
+			//			GETVALUE(i - 1, j, k - 1) +
+			//			GETVALUE(i - 1, j, k) +
+			//			GETVALUE(i - 1, j + 1, k - 1) +
+			//			GETVALUE(i - 1, j + 1, k));
+			//}
+			//if (side == Side::east)
+			//{
+			//	if (i == nx - 1)
+			//		return boundary(side, i, j, k);
+			//	else
+			//		return 0.125 * (
+			//			GETVALUE(i, j, k - 1) +
+			//			GETVALUE(i, j, k) +
+			//			GETVALUE(i, j + 1, k - 1) +
+			//			GETVALUE(i, j + 1, k) +
+			//			GETVALUE(i + 1, j, k - 1) +
+			//			GETVALUE(i + 1, j, k) +
+			//			GETVALUE(i + 1, j + 1, k - 1) +
+			//			GETVALUE(i + 1, j + 1, k));
+			//}
 			if (side == Side::south)
 			{
+				if (k == 0)
+					return boundary(Side::front, i, j, k);
+				else if (k == nz)
+					return boundary(Side::back, i, j, k);
 				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j, k - 1));
 			}
 			if (side == Side::north)
 			{
+				if (k == 0)
+					return boundary(Side::front, i, j + 1, k);
+				else if (k == nz)
+					return boundary(Side::back, i, j + 1, k);
 				return 0.5 * (GETVALUE(i, j + 1, k) + GETVALUE(i, j + 1, k - 1));
 			}
-			if (side == Side::front)
-			{
-				return 0.5 * (GETVALUE(i, j, k - 1) + GETVALUE(i, j + 1, k - 1));
-			}
-			if (side == Side::back)
-			{
-				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j + 1, k));
-			}
+			//if (side == Side::front)
+			//{
+			//	return 0.5 * (GETVALUE(i, j, k - 1) + GETVALUE(i, j + 1, k - 1));
+			//}
+			//if (side == Side::back)
+			//{
+			//	return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j + 1, k));
+			//}
 			if (side == Side::center)
 			{
 				return 0.25 * (
@@ -1443,37 +1639,37 @@ struct Velocity : public ScalarVariable
 			if (side == Side::west)
 			{
 				if (i == 0)
-					return 0.0;
-				else
-					return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i - 1, j, k));
+					return boundary(side, i, j, k);
+				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i - 1, j, k));
 			}
 			if (side == Side::east)
 			{
 				if (i == nx - 1)
-					return 0.0;
-				else
-					return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i + 1, j, k));
+					return boundary(side, i, j, k);
+				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i + 1, j, k));
 			}
 			if (side == Side::south)
 			{
 				if (j == 0)
-					return 0.0;
-				else
-					return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j - 1, k));
+					return boundary(side, i, j, k);
+				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j - 1, k));
 			}
 			if (side == Side::north)
 			{
-				if (j == 0)
-					return 0.0;
-				else
-					return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j - 1, k));
+				if (j == ny - 1)
+					return boundary(side, i, j, k);
+				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j + 1, k));
 			}
 			if (side == Side::front)
 			{
+				if (k == 0) 
+					return boundary(side, i, j, k);
 				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j, k - 1));
 			}
 			if (side == Side::back)
 			{
+				if (k == nz)
+					return boundary(side, i, j, k);
 				return 0.5 * (GETVALUE(i, j, k) + GETVALUE(i, j, k + 1));
 			}
 			if (side == Side::center)
@@ -1481,12 +1677,10 @@ struct Velocity : public ScalarVariable
 				return GETVALUE(i, j, k);
 			}
 		}
-		#ifdef DEBUG
-		print("error");
-		#endif // DEBUG
+		
+		std::cout << "should be here" << std::endl;
 		return 0.0;
 	}
-
 
 
 	double get_dx_for_vx_cell(Side side, int i, int j = 0, int k = 0)
@@ -1494,26 +1688,22 @@ struct Velocity : public ScalarVariable
 		if (type == Component::x)
 		{
 			if (side == Side::west)
-				return GETDX(i, i - 1);
-			if (side == Side::east)
-				return GETDX(i + 1, i);
-		}
-
-		if (type == Component::x)
-		{
-			if (side == Side::west)
 			{
-				if (i == 1)
-					return boundary.normal_deriv(side, GETVALUE(i, j, k));
-				else
-					return GETDX(i, i - 1);
+				if (i == 0)
+				{
+					if (boundary[side].type == MathBoundary::Periodic)
+						return GETDX(0, nx - 1);
+				}
+				return GETDX(i, i - 1);
 			}
 			if (side == Side::east)
 			{
-				if (i == nx - 1)
-					return boundary.normal_deriv(side, GETVALUE(i, j, k));
-				else
-					return GETDX(i + 1, i);
+				if (i == nx)
+				{
+					if (boundary[side].type == MathBoundary::Periodic)
+						return GETDX(1, nx);
+				}
+				return GETDX(i + 1, i);
 			}
 		}
 		MYERROR("Velocity");
@@ -1526,7 +1716,7 @@ struct Velocity : public ScalarVariable
 			if (side == Side::south)
 			{
 				if (j == 0)
-					return boundary.normal_deriv(side, GETVALUE(i, j, k));
+					return boundary.normal_deriv(side, i, j, k);
 				else
 					return GETDY(j, j - 1);
 			}
@@ -1534,7 +1724,7 @@ struct Velocity : public ScalarVariable
 			if (side == Side::north)
 			{
 				if (j == ny - 1)
-					return boundary.normal_deriv(side, GETVALUE(i, j, k));
+					return boundary.normal_deriv(side, i, j, k);
 				else
 					return GETDY(j + 1, j);
 			}
@@ -1549,14 +1739,14 @@ struct Velocity : public ScalarVariable
 			if (side == Side::front)
 			{
 				if (k == 0)
-					return boundary.normal_deriv(side, GETVALUE(i, j, k));
+					return boundary.normal_deriv(side, i, j, k);
 				else
 					return GETDZ(k, k - 1);
 			}
 			if (side == Side::back)
 			{
 				if (k == nz - 1)
-					return boundary.normal_deriv(side, GETVALUE(i, j, k));
+					return boundary.normal_deriv(side, i, j, k);
 				else
 					return GETDZ(k + 1, k);
 			}
@@ -1572,14 +1762,14 @@ struct Velocity : public ScalarVariable
 			if (side == Side::west)
 			{
 				if (i == 0)
-					return boundary.normal_deriv(side, GETVALUE(i, j, k));
+					return boundary.normal_deriv(side, i, j, k);
 				else
 					return GETDX(i, i - 1);
 			}
 			if (side == Side::east)
 			{
 				if (i == nx - 1)
-					return boundary.normal_deriv(side, GETVALUE(i, j, k));
+					return boundary.normal_deriv(side, i, j, k);
 				else
 					return GETDX(i + 1, i);
 			}
@@ -1607,14 +1797,14 @@ struct Velocity : public ScalarVariable
 			if (side == Side::front)
 			{
 				if (k == 0)
-					return boundary.normal_deriv(side, GETVALUE(i, j, k));
+					return boundary.normal_deriv(side, i, j, k);
 				else
 					return GETDZ(k, k - 1);
 			}
 			if (side == Side::back)
 			{
 				if (k == nz - 1)
-					return boundary.normal_deriv(side, GETVALUE(i, j, k));
+					return boundary.normal_deriv(side, i, j, k);
 				else
 					return GETDZ(k + 1, k);
 			}
@@ -1630,14 +1820,14 @@ struct Velocity : public ScalarVariable
 			if (side == Side::west)
 			{
 				if (i == 0)
-					return boundary.normal_deriv(side, GETVALUE(i, j, k));
+					return boundary.normal_deriv(side, i, j, k);
 				else
 					return GETDX(i, i - 1);
 			}
 			if (side == Side::east)
 			{
 				if (i == nx - 1)
-					return boundary.normal_deriv(side, GETVALUE(i, j, k));
+					return boundary.normal_deriv(side, i, j, k);
 				else
 					return GETDX(i + 1, i);
 			}
@@ -1652,7 +1842,7 @@ struct Velocity : public ScalarVariable
 			if (side == Side::south)
 			{
 				if (j == 0)
-					return boundary.normal_deriv(side, GETVALUE(i, j, k));
+					return boundary.normal_deriv(side, i, j, k);
 				else
 					return GETDY(j, j - 1);
 			}
@@ -1660,7 +1850,7 @@ struct Velocity : public ScalarVariable
 			if (side == Side::north)
 			{
 				if (j == ny - 1)
-					return boundary.normal_deriv(side, GETVALUE(i, j, k));
+					return boundary.normal_deriv(side, i, j, k);
 				else
 					return GETDY(j + 1, j);
 			}
@@ -1679,61 +1869,61 @@ struct Velocity : public ScalarVariable
 		}
 	}
 
-	double laplace_for_vx_cell(Side side, int i, int j, int k)
-	{
-		double lapl = 0.0;
-		lapl += (get_dx_for_vx_cell(Side::east, i, j, k)
-			- get_dx_for_vx_cell(Side::west, i, j, k)) * Sx;
-		lapl += (get_dy_for_vx_cell(Side::north, i, j, k)
-			- get_dy_for_vx_cell(Side::south, i, j, k)) * Sy;
-		lapl += (get_dz_for_vx_cell(Side::back, i, j, k)
-			- get_dz_for_vx_cell(Side::front, i, j, k)) * Sz;
-		return lapl;
-	}
-	double laplace_for_vy_cell(Side side, int i, int j, int k)
-	{
-		double lapl = 0.0;
-		lapl += (get_dx_for_vy_cell(Side::east, i, j, k)
-				- get_dx_for_vy_cell(Side::west, i, j, k)) * Sx;
-		lapl += (get_dy_for_vy_cell(Side::north, i, j, k)
-				- get_dy_for_vy_cell(Side::south, i, j, k)) * Sy;
-		lapl += (get_dz_for_vy_cell(Side::back, i, j, k)
-				- get_dz_for_vy_cell(Side::front, i, j, k)) * Sz;
-		return lapl;
-	}
-	double laplace_for_vz_cell(Side side, int i, int j, int k)
-	{
-		double lapl = 0.0;
-		lapl += (get_dx_for_vz_cell(Side::east, i, j, k)
-			   - get_dx_for_vz_cell(Side::west, i, j, k)) * Sx;
-		lapl += (get_dy_for_vz_cell(Side::north, i, j, k)
-			   - get_dy_for_vz_cell(Side::south, i, j, k)) * Sy;
-		lapl += (get_dz_for_vz_cell(Side::back, i, j, k)
-			   - get_dz_for_vz_cell(Side::front, i, j, k)) * Sz;
-		return lapl;
-	}
+	//double laplace_for_vx_cell(Side side, int i, int j, int k)
+	//{
+	//	double lapl = 0.0;
+	//	lapl += (get_dx_for_vx_cell(Side::east, i, j, k)
+	//		- get_dx_for_vx_cell(Side::west, i, j, k)) * Sx;
+	//	lapl += (get_dy_for_vx_cell(Side::north, i, j, k)
+	//		- get_dy_for_vx_cell(Side::south, i, j, k)) * Sy;
+	//	lapl += (get_dz_for_vx_cell(Side::back, i, j, k)
+	//		- get_dz_for_vx_cell(Side::front, i, j, k)) * Sz;
+	//	return lapl;
+	//}
+	//double laplace_for_vy_cell(Side side, int i, int j, int k)
+	//{
+	//	double lapl = 0.0;
+	//	lapl += (get_dx_for_vy_cell(Side::east, i, j, k)
+	//			- get_dx_for_vy_cell(Side::west, i, j, k)) * Sx;
+	//	lapl += (get_dy_for_vy_cell(Side::north, i, j, k)
+	//			- get_dy_for_vy_cell(Side::south, i, j, k)) * Sy;
+	//	lapl += (get_dz_for_vy_cell(Side::back, i, j, k)
+	//			- get_dz_for_vy_cell(Side::front, i, j, k)) * Sz;
+	//	return lapl;
+	//}
+	//double laplace_for_vz_cell(Side side, int i, int j, int k)
+	//{
+	//	double lapl = 0.0;
+	//	lapl += (get_dx_for_vz_cell(Side::east, i, j, k)
+	//		   - get_dx_for_vz_cell(Side::west, i, j, k)) * Sx;
+	//	lapl += (get_dy_for_vz_cell(Side::north, i, j, k)
+	//		   - get_dy_for_vz_cell(Side::south, i, j, k)) * Sy;
+	//	lapl += (get_dz_for_vz_cell(Side::back, i, j, k)
+	//		   - get_dz_for_vz_cell(Side::front, i, j, k)) * Sz;
+	//	return lapl;
+	//}
 
-	static double divergence_finite_volume(Velocity &FX, Velocity&FY, Velocity&FZ,	int i, int j, int k)
-	{
-		double div = 0.0;
-		div += FX.Sx * (FX.get_for_centered_cell(Side::east, i, j, k) - FX.get_for_centered_cell(Side::west, i, j, k));
-		div += FY.Sy * (FY.get_for_centered_cell(Side::north, i, j, k) - FY.get_for_centered_cell(Side::south, i, j, k));
-		div += FZ.Sz * (FZ.get_for_centered_cell(Side::back, i, j, k) - FZ.get_for_centered_cell(Side::front, i, j, k));
-		return div;
-	}
-	static double divergence_finite_volume(Velocity& FX, Velocity& FY, 	int i, int j)
-	{
-		double div = 0.0;
-		div += FX.Sx * (FX.get_for_centered_cell(Side::east, i, j) - FX.get_for_centered_cell(Side::west, i, j));
-		div += FY.Sy * (FY.get_for_centered_cell(Side::north, i, j) - FY.get_for_centered_cell(Side::south, i, j));
-		return div;
-	}
-	static double divergence_finite_volume(Velocity& FX, int i)
-	{
-		double div = 0.0;
-		div += FX.Sx * (FX.get_for_centered_cell(Side::east, i) - FX.get_for_centered_cell(Side::west, i));		
-		return div;
-	}
+	//static double divergence_finite_volume(Velocity &FX, Velocity&FY, Velocity&FZ,	int i, int j, int k)
+	//{
+	//	double div = 0.0;
+	//	div += FX.Sx * (FX.get_for_centered_cell(Side::east, i, j, k) - FX.get_for_centered_cell(Side::west, i, j, k));
+	//	div += FY.Sy * (FY.get_for_centered_cell(Side::north, i, j, k) - FY.get_for_centered_cell(Side::south, i, j, k));
+	//	div += FZ.Sz * (FZ.get_for_centered_cell(Side::back, i, j, k) - FZ.get_for_centered_cell(Side::front, i, j, k));
+	//	return div;
+	//}
+	//static double divergence_finite_volume(Velocity& FX, Velocity& FY, 	int i, int j)
+	//{
+	//	double div = 0.0;
+	//	div += FX.Sx * (FX.get_for_centered_cell(Side::east, i, j) - FX.get_for_centered_cell(Side::west, i, j));
+	//	div += FY.Sy * (FY.get_for_centered_cell(Side::north, i, j) - FY.get_for_centered_cell(Side::south, i, j));
+	//	return div;
+	//}
+	//static double divergence_finite_volume(Velocity& FX, int i)
+	//{
+	//	double div = 0.0;
+	//	div += FX.Sx * (FX.get_for_centered_cell(Side::east, i) - FX.get_for_centered_cell(Side::west, i));		
+	//	return div;
+	//}
 
 	int range_out(int i, int j = 0, int k = 0)
 	{
@@ -1757,6 +1947,9 @@ struct Velocity : public ScalarVariable
 
 	}
 
+	int index_shift(Component c, int i)
+	{
+	}
 
 };
 

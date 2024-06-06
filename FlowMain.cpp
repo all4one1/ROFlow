@@ -189,6 +189,26 @@ void FlowSolver::set_boundary(Side s, PhysBoundary t, double v)
 		uy.boundary[s] = uz.boundary[s] = ux.boundary[s];
 	}
 }
+void FlowSolver::set_period_pair(Side s1, Side s2)
+{
+	vx.boundary.set_period_pair(s1, s2);
+	vy.boundary.set_period_pair(s1, s2);
+	vz.boundary.set_period_pair(s1, s2);
+
+	ux.boundary.set_period_pair(s1, s2);
+	uy.boundary.set_period_pair(s1, s2);
+	uz.boundary.set_period_pair(s1, s2);
+
+	P.boundary.set_period_pair(s1, s2);
+	P0.boundary.set_period_pair(s1, s2);
+	T.boundary.set_period_pair(s1, s2);
+	T0.boundary.set_period_pair(s1, s2);
+	C.boundary.set_period_pair(s1, s2);
+	C0.boundary.set_period_pair(s1, s2);
+	SF.boundary.set_period_pair(s1, s2);
+	SF0.boundary.set_period_pair(s1, s2);
+	p_prime.boundary.set_period_pair(s1, s2);
+}
 void FlowSolver::set_linear_pressure(double px0, double pxN, double py0, double pyN, double pz0, double pzN)
 {
 	for (int k = 0; k < nz; k++) {

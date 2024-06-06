@@ -47,21 +47,93 @@ void FlowSolver::form_matrix_for_heat_equation(SparseMatrix &M, double *b)
 	M.reset();
 	struct Contribution
 	{
-		std::map<Side, double> m;
-		Contribution()
+		std::map<int, double> m;
+		int l, i, j, k, nx, ny, nz, off, off2;
+		Contribution(ScalarVariable &F, int l_, int i_ = 0, int j_ = 0, int k_ = 0)
+			: l(l_), i(i_), j(j_), k(k_)
 		{
-			m[Side::center] = 0.0;
-			m[Side::west] = 0.0;
-			m[Side::east] = 0.0;
-			m[Side::south] = 0.0;
-			m[Side::north] = 0.0;
-			m[Side::front] = 0.0;
-			m[Side::back] = 0.0;
-
+			off = F.off;
+			off2 = F.off2;
+			nx = F.nx;
+			ny = F.ny;
+			nz = F.nz;
 		}
-		double& operator[](Side side)
+		int index(Side side)
 		{
-			return m[side];
+			switch (side)
+			{
+			case Side::center:
+				return l;
+				break;
+			case Side::west:
+				return l - 1;
+				break;
+			case Side::east:
+				return l + 1;
+				break;
+			case Side::south:
+				return l - off;
+				break;
+			case Side::north:
+				return l + off;
+				break;
+			case Side::front:
+				return l - off2;
+				break;
+			case Side::back:
+				return l + off2;
+				break;
+			default:
+				return -1;
+				break;
+			}
+			return -1;
+		};
+
+		int index_period(Side side)
+		{
+			switch (side)
+			{
+			case Side::center:
+				return l;
+				break;
+			case Side::west:
+				return (nx - 1) + off*j + off2*k;
+				break;
+			case Side::east:
+				return (0) + off * j + off2 * k;
+				break;
+			case Side::south:
+				return i + (ny - 1) * off  + off2 * k;
+				break;
+			case Side::north:
+				return i + off * 0 + off2 * k;
+				break;
+			case Side::front:
+				return i + j * off + (nz - 1) * off2;
+				break;
+			case Side::back:
+				return i + j * off + 0 * off2;
+				break;
+			default:
+				return -1;
+				break;
+			}
+			return -1;
+		};
+
+		double& operator()(Side side, bool period = false)
+		{
+			if (period == false) return (*this)[index(side)];
+			else  return (*this)[index_period(side)];
+		}
+		double& operator[](int l)
+		{
+			return m[l];
+		}
+		map<int, double>& get_map()
+		{
+			return m;
 		}
 	};
 
@@ -73,7 +145,7 @@ void FlowSolver::form_matrix_for_heat_equation(SparseMatrix &M, double *b)
 			for (int i = 0; i < nx; i++) {
 				int l = i + off * j + off2 * k;
 				map<int, double> line;
-				Contribution a;
+				Contribution a(F, l, i, j, k);
 
 				auto flux = [&F, b, &a, i, j, k, l](Side side, double S, double h, double coef, bool border)
 				{
@@ -85,14 +157,19 @@ void FlowSolver::form_matrix_for_heat_equation(SparseMatrix &M, double *b)
 						}
 						if (F.boundary.type(side) == MathBoundary::Dirichlet)
 						{
-							a[Side::center] += coef * S / (0.5 * h);
+							a(Side::center) += coef * S / (0.5 * h);
 							b[l] += F.boundary(side) * coef * S / (0.5 * h);
+						}
+						if (F.boundary.type(side) == MathBoundary::Periodic)
+						{
+							a(Side::center) += coef * S / h;
+							a(side, true) += -coef * S / h;
 						}
 					}
 					else
 					{
-						a[Side::center] +=  coef * S / h;
-						a[side] += -coef * S / h;
+						a(Side::center) +=  coef * S / h;
+						a(side) += -coef * S / h;
 					}
 				};
 
@@ -159,21 +236,8 @@ void FlowSolver::form_matrix_for_heat_equation(SparseMatrix &M, double *b)
 					flux(Side::back, SZ, hz, PhysCoef, k == nz - 1);
 				}
 
-				a[Side::center] += DV / tau;
-
-				line[l] = a[Side::center];
-				line[l - 1] = a[Side::west];
-				line[l + 1] = a[Side::east];
-
-				if (dim > 1) {
-					line[l - off] = a[Side::south];
-					line[l + off] = a[Side::north];
-				}
-				if (dim > 2) {
-					line[l - off2] = a[Side::front];
-					line[l + off2] = a[Side::back];
-				}
-				M.add_line_with_map(line, l);
+				a(Side::center) += DV / tau;
+				M.add_line_with_map(a.get_map(), l);
 			}
 		}
 	}
@@ -266,9 +330,13 @@ void FlowSolver::form_rhs_for_heat_equation(double* b, bool reset)
 						{
 							b[l] += F.boundary.normal_deriv_oriented(side) * S * coef;
 						}
-						if (F.boundary.type(side) == MathBoundary::Dirichlet)
+						else if (F.boundary.type(side) == MathBoundary::Dirichlet)
 						{
 							b[l] += F.boundary(side) * coef * S / (0.5 * h);
+						}
+						else if (F.boundary.type(side) == MathBoundary::Periodic)
+						{
+							//nothing to do
 						}
 					}
 				};

@@ -57,6 +57,7 @@ public:
 	void set_boundary_for_velocity(Component c, Side s, MathBoundary t, double v = 0.0);
 	void set_linear_pressure(double px0, double pxN, double py0 = 0, double pyN = 0, double pz0 = 0, double pzN = 0);
 	void set_boundary(Side s, PhysBoundary t, double v = 0.0);
+	void set_period_pair(Side s1, Side s2);
 
 	void solve_projection(int steps_at_ones = 1);
 	void projection_quasi_velocity();
