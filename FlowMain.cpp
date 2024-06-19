@@ -116,6 +116,7 @@ FlowSolver::FlowSolver(Configuration config)
 	SF0 = ScalarVariable(nx, ny, nz, hx, hy, hz);
 	SF0.set_all_boundaries(MathBoundary::Dirichlet);
 	bufferVibr = ScalarVariable(nx, ny, nz, hx, hy, hz);
+	bufferVibr.set_all_boundaries(MathBoundary::Dirichlet);
 
 	T = ScalarVariable(nx, ny, nz, hx, hy, hz);
 	T0 = ScalarVariable(nx, ny, nz, hx, hy, hz);
@@ -127,7 +128,7 @@ FlowSolver::FlowSolver(Configuration config)
 	vibr.set_directly_xyz(0, 1, 0);
 
 	stats.open();
-	temporal.open(false, "temporal.dat");
+	temporal.open(false, "results\\temporal.dat");
 }
 
 
@@ -236,12 +237,30 @@ double FlowSolver::check_div()
 			for (int i = 0; i < nx; i++) {
 				div += (ux(i + 1, j, k) - ux(i, j, k)) / hx; 
 				div += (uy(i, j + 1, k) - uy(i, j, k)) / hy;
-				//div += (uz(i, j, k + 1) - uz(i, j, k)) / hz;
+				div += (uz(i, j, k + 1) - uz(i, j, k)) / hz;
 			}
 		}
 	}
 	return abs(div);
 }
+
+double FlowSolver::check_div2()
+{
+	double max = 0;
+	for (int k = 0; k < nz; k++) {
+		for (int j = 0; j < ny; j++) {
+			for (int i = 0; i < nx; i++) {
+				double div = 0.0;
+				div += (ux(i + 1, j, k) - ux(i, j, k)) * Sx;
+				div += (uy(i, j + 1, k) - uy(i, j, k)) * Sy;
+				div += (uz(i, j, k + 1) - uz(i, j, k)) * Sz;
+				if (abs(div) > max) max = abs(div);
+			}
+		}
+	}
+	return max;
+}
+
 
 void FlowSolver::statistics(double &Ek, double &Vmax)
 {
@@ -315,8 +334,8 @@ void FlowSolver::finalize()
 	double Ek, Vmax;
 	statistics(Ek, Vmax);
 
-	stats.write_header("Ra, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif");
-	stats.write({ Ra, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif});
+	stats.write_header("Ra, Rav, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif");
+	stats.write({ Ra, Rav, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif});
 
 	write_fields();
 }

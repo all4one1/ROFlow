@@ -78,6 +78,7 @@ public:
 	void solve_system(size_t steps_at_ones = SIZE_MAX);
 	
 	double check_div();
+	double check_div2();
 	void statistics(double& Ek, double& Vmax);
 	void write_fields(std::string path = "results\\field.dat");
 	void finalize();

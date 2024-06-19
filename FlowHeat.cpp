@@ -255,7 +255,7 @@ void FlowSolver::form_rhs_for_heat_equation(double* b, bool reset)
 		double vzF = Sz * (f.get_at_side(Side::back, i, j, k) * vz.get_for_centered_cell(Side::back, i, j, k)
 						 - f.get_at_side(Side::front, i, j, k) * vz.get_for_centered_cell(Side::front, i, j, k));
 
-		return TURNOFF *(vxF + vyF + vzF);
+		return (vxF + vyF + vzF);
 	};
 
 	ScalarVariable& F = T;

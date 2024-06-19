@@ -412,6 +412,15 @@ struct ScalarVariable
 			else
 				return GETDX(i + 1, i);
 		}
+		if (side == Side::south)
+		{
+			if (i == nx - 1)
+				return boundary.normal_deriv(side, i, j, k);
+			else
+				return GETDX(i + 1, i);
+		}
+
+
 		if (side == Side::center)
 		{
 			return (get_at_side(Side::east, i, j, k) - get_at_side(Side::west, i, j, k)) / (hx);

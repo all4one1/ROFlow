@@ -13,7 +13,7 @@ int main(int argc, char** argv)
 	Configuration config;
 
 	// n, Dim, Lx, Ly, Lz
-	config.set_uniform(20, "2D", 1.0, 1.0); 
+	config.set_uniform(20, "2D", 2.0, 1.0); 
 	//config.set_cell_number(3, 3); 	config.set_domain_LxLyLz(1, 2, 1);
 	config.tau = 1e+100;
 	config.tau = 0.01;
@@ -22,11 +22,11 @@ int main(int argc, char** argv)
 	FlowSolver solver(config);
 
 	solver.K = 0;
-	solver.Pr = 10;
+	solver.Pr = 7;
 	solver.Rav = 0;
+
+
 	solver.vibr.set_directly_xyz(1, 0, 0);
-
-
 	solver.set_period_pair(Side::west, Side::east);			    
 	solver.T.boundary.set_boundary(Side::south, MathBoundary::Dirichlet, 1);
 	solver.T.boundary.set_boundary(Side::north, MathBoundary::Dirichlet, 0);
@@ -44,12 +44,14 @@ int main(int argc, char** argv)
 
 	solver.timer.start("total");
 
-	double R = 5000;
-	//for (double R = 5000; R > 1000; R = R - 50)
+	double R = 0;
+
+	
+	for (double R = 5000; R > 2000; R = R - 100)
 	{
 		solver.reset();
 		solver.Ra = R;
-		solver.solve_system(3000);  //size_t(1.0 / config.tau) * 2000
+		solver.solve_system();  //size_t(1.0 / config.tau) * 2000
 		solver.finalize();
 	}
 

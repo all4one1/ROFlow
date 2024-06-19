@@ -105,7 +105,7 @@ void FlowSolver::poisson_equation_for_p_prime()
 	timer.end("p_prime");
 
 	if (iter == 1) ofstream f("p_prime.dat");
-	if (iter % 100 == 0)
+	if (iter % 1 == 0)
 	{
 		ofstream f("p_prime.dat", ios_base::app);
 		f << iter << " " << iter_p << " " << abs_eps << " " << rel_eps << " " << res << endl;
@@ -225,10 +225,10 @@ void FlowSolver::solve_system(size_t steps_at_ones)
 			poisson_equation_for_p_prime();
 			correction_for_simple();
 
-			double div = check_div();
+			double div = check_div2();
 			if (sq % 100 == 0) print("div = " << div << " " << sq)
 				if (div < 1e-5) break;
-			if (sq > 20000) { print("bad div"); break; }
+			if (sq > 10000) { print("bad div"); break; }
 		}
 
 		ux.transfer_data_to(vx);
@@ -257,8 +257,8 @@ void FlowSolver::solve_system(size_t steps_at_ones)
 
 			print(iter << ", t = " << total_time << ", Ek = " << Ek << ", Vmax = " << Vmax);
 			
-			temporal.write_header("Ra, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif");
-			temporal.write({ Ra, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif });
+			temporal.write_header("Ra, Rav, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif");
+			temporal.write({ Ra, Rav, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif });
 
 
 			if (check_Ek.stop(Ek, false))
