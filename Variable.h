@@ -159,15 +159,21 @@ struct Boundary
 			{
 				switch (side)
 				{
-				case Side::west:
+				case Side::west:					
+					return (GETVALUE(0, j, k) - GETVALUE(nx - 1, j, k)) / (it->h);
+					break;
 				case Side::east:
 					return (GETVALUE(0, j, k) - GETVALUE(nx - 1, j, k)) / (it->h);
 					break;
 				case Side::south:
+					return (GETVALUE(i, 0, k) - GETVALUE(i, ny - 1, k)) / (it->h);
+					break;
 				case Side::north:
 					return (GETVALUE(i, 0, k) - GETVALUE(i, ny - 1, k)) / (it->h);
 					break;
 				case Side::front:
+					return (GETVALUE(i, j, 0) - GETVALUE(i, j, nz - 1)) / (it->h);
+					break;
 				case Side::back:
 					return (GETVALUE(i, j, 0) - GETVALUE(i, j, nz - 1)) / (it->h);
 					break;
@@ -239,15 +245,21 @@ struct Boundary
 			{
 				switch (side)
 				{
-				case Side::west:
+				case Side::west:					
+					return 0.5 * (GETVALUE(0, j, k) + GETVALUE(nx - 1, j, k));
+					break;
 				case Side::east:
 					return 0.5 * (GETVALUE(0, j, k) + GETVALUE(nx - 1, j, k));
 					break;
 				case Side::south:
+					return 0.5 * (GETVALUE(i, 0, k) + GETVALUE(i, ny - 1, k));
+					break;
 				case Side::north:
 					return 0.5 * (GETVALUE(i, 0, k) + GETVALUE(i, ny - 1, k));
 					break;
 				case Side::front:
+					return 0.5 * (GETVALUE(i, j, 0) + GETVALUE(i, j, nz - 1));
+					break;
 				case Side::back:
 					return 0.5 * (GETVALUE(i, j, 0) + GETVALUE(i, j, nz - 1));
 					break;
@@ -318,6 +330,7 @@ struct ScalarVariable
 	double Sx = 0, Sy = 0, Sz = 0;
 	int nx = 1, ny = 1, nz = 1;
 	int off = 0, off2 = 0, N = 0, Nb = 0;
+	int xExtra = 0, yExtra = 0, zExtra = 0;
 	char dim = 1;
 	Boundary boundary;
 	ScalarVariable()
@@ -365,6 +378,7 @@ struct ScalarVariable
 		boundary.set_boundary(Side::front, MathBoundary::Neumann, 0.0);
 		boundary.set_boundary(Side::back,  MathBoundary::Neumann, 0.0);
 		boundary.set_steps(0.5 * hx, 0.5 * hy, 0.5 * hz);
+
 
 		if (newPointer)
 		{
@@ -745,14 +759,14 @@ struct ScalarVariable
 		return k * hz + z0;
 	}
 
-	void write3D(int addx = 0, int addy = 0, int addz = 0)
+	void write3D()
 	{
-		std::ofstream w("field.dat");
+		std::ofstream w("one_field.dat");
 		w << "i, j, k, f" << std::endl;
 		w << std::fixed;
-		for (int k = 0; k < nz + addz; k++) {
-			for (int j = 0; j < ny + addy; j++) {
-				for (int i = 0; i < nx + addx; i++)
+		for (int k = 0; k < nz + zExtra; k++) {
+			for (int j = 0; j < ny + yExtra; j++) {
+				for (int i = 0; i < nx + xExtra; i++)
 				{
 					w << x_(i) << " " << y_(j) << " " << z_(k) << " " << (*this)(i, j, k) << std::endl;
 
@@ -895,6 +909,7 @@ struct Velocity : public ScalarVariable
 			if (dim >= 2)	off = nx + 1;
 			if (dim >= 3)	off2 = (nx + 1) * ny;
 			N = (nx + 1) * ny * nz;
+			xExtra = 1;
 		}
 
 		if (type == Component::y)
@@ -902,6 +917,7 @@ struct Velocity : public ScalarVariable
 			if (dim >= 2)	off = nx;
 			if (dim >= 3)	off2 = (ny + 1) * nz;
 			N = nx * (ny + 1) * nz;
+			yExtra = 1;
 		}
 
 		if (type == Component::z)
@@ -909,6 +925,7 @@ struct Velocity : public ScalarVariable
 			if (dim >= 2)	off = nx;
 			if (dim >= 3)	off2 = nx * ny;
 			N = nx * ny * (nz + 1);
+			zExtra = 1;
 		}
 
 		default_(newPointer, ptr);

@@ -32,7 +32,7 @@ public:
 	double* vx_, * vy_, * vz_;
 
 	double* V, * V0, *U, *U0, * B, *Ap,  *b;
-	SparseMatrix SM, SMt, SMc;
+	SparseMatrix SM, SMt, SMc, SMtest;
 	int nx, ny, nz, off, off2, N;
 	int dim, stride, stride2, Nvx, Nvy, Nvz, NV;
 	double hx, hy, hz, Sx, Sy, Sz, Lx, Ly, Lz, dV;
@@ -68,7 +68,7 @@ public:
 	void form_rhs_for_heat_equation(double* b, bool reset = false);
 	void form_matrix_for_concentration_equation(SparseMatrix& M, double* b);
 	void form_rhs_for_concentration_equation(double* b, bool reset = false);
-	void solve_heat_equation(int steps_at_ones = 1);
+	void solve_heat_equation(size_t steps_at_ones = SIZE_MAX);
 	void solve_heat_equation_explicitly(int steps_at_ones = 1);
 
 	void guessed_velocity_for_simple();
@@ -83,6 +83,10 @@ public:
 	void finalize();
 	void reset();
 
+
+	void form_matrix_test2(SparseMatrix& M, double* b);
+
+	void form_rhs_test2(double* b, bool reset);
 
 	void form_matrix_test(SparseMatrix& M, double* b);
 	void form_rhs_test(double* b, bool reset);

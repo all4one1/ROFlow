@@ -233,11 +233,10 @@ double FlowSolver::check_div()
 	double div = 0.0;
 	for (int k = 0; k < nz; k++) {
 		for (int j = 0; j < ny; j++) {
-			for (int i = 0; i < nx; i++)
-			{
+			for (int i = 0; i < nx; i++) {
 				div += (ux(i + 1, j, k) - ux(i, j, k)) / hx; 
 				div += (uy(i, j + 1, k) - uy(i, j, k)) / hy;
-				div += (uz(i, j, k + 1) - uz(i, j, k)) / hz;
+				//div += (uz(i, j, k + 1) - uz(i, j, k)) / hz;
 			}
 		}
 	}
@@ -272,7 +271,7 @@ void FlowSolver::write_fields(std::string path)
 {
 	ofstream w(path);
 
-	w << "x, y, z, ux, uy, uz, P, T, C, SF" << endl;
+	w << "x, y, z, ux, uy, uz, P, T, C, SF, buffer" << endl;
 
 	double ux_ = 0, uy_ = 0, uz_ = 0;
 	double x = 0, y = 0, z = 0;
@@ -292,6 +291,7 @@ void FlowSolver::write_fields(std::string path)
 				w << P(i, j, k) << " " << T(i, j, k) << " " << C(i, j, k) << " ";
 				w << SF(i, j, k) << " ";
 				
+				w << buffer(i,j,k) << " ";
 				w << endl;
 			}
 		}

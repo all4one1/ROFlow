@@ -1,5 +1,5 @@
 #include "FlowSolver.h"
-
+#define TURNOFF 1
 
 void FlowSolver::solve_heat_equation_explicitly(int steps_at_ones)
 {
@@ -144,7 +144,6 @@ void FlowSolver::form_matrix_for_heat_equation(SparseMatrix &M, double *b)
 		for (int j = 0; j < ny; j++) {
 			for (int i = 0; i < nx; i++) {
 				int l = i + off * j + off2 * k;
-				map<int, double> line;
 				Contribution a(F, l, i, j, k);
 
 				auto flux = [&F, b, &a, i, j, k, l](Side side, double S, double h, double coef, bool border)
@@ -250,13 +249,13 @@ void FlowSolver::form_rhs_for_heat_equation(double* b, bool reset)
 	auto vF = [this](ScalarVariable& f, int i, int j, int k, double Sx, double Sy, double Sz)
 	{
 		double vxF = Sx * (f.get_at_side(Side::east, i, j, k) * vx.get_for_centered_cell(Side::east, i, j, k)
-			- f.get_at_side(Side::west, i, j, k) * vx.get_for_centered_cell(Side::west, i, j, k));
+						 - f.get_at_side(Side::west, i, j, k) * vx.get_for_centered_cell(Side::west, i, j, k));
 		double vyF = Sy * (f.get_at_side(Side::north, i, j, k) * vy.get_for_centered_cell(Side::north, i, j, k)
-			- f.get_at_side(Side::south, i, j, k) * vy.get_for_centered_cell(Side::south, i, j, k));
+						 - f.get_at_side(Side::south, i, j, k) * vy.get_for_centered_cell(Side::south, i, j, k));
 		double vzF = Sz * (f.get_at_side(Side::back, i, j, k) * vz.get_for_centered_cell(Side::back, i, j, k)
-			- f.get_at_side(Side::front, i, j, k) * vz.get_for_centered_cell(Side::front, i, j, k));
+						 - f.get_at_side(Side::front, i, j, k) * vz.get_for_centered_cell(Side::front, i, j, k));
 
-		return vxF + vyF + vzF;
+		return TURNOFF *(vxF + vyF + vzF);
 	};
 
 	ScalarVariable& F = T;
@@ -622,14 +621,16 @@ void FlowSolver::form_rhs_for_concentration_equation(double* b, bool reset)
 	}
 }
 
-void FlowSolver::solve_heat_equation(int steps_at_ones)
+void FlowSolver::solve_heat_equation(size_t steps_at_ones)
 {
 	if (SMt.nval == 0)
 	{
 		form_matrix_for_heat_equation(SMt, b);
 	}
 
-	form_rhs_for_heat_equation(b);
-	itsol.solveGS(T.get_ptr(), T0.get_ptr(), b, N, SMt);
-
+	for (size_t q = 0; q < steps_at_ones; q++)
+	{
+		form_rhs_for_heat_equation(b);
+		itsol.solveGS(T.get_ptr(), T0.get_ptr(), b, N, SMt);
+	}
 }

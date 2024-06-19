@@ -7,6 +7,7 @@ void FlowSolver::guessed_velocity_for_simple()
 	timer.start("guessed_u");
 	form_rhs_test(B, true);
 	//form_big_rhs(B, true);
+	//itsol.solveGS(U, U0, B, NV, SM);
 	itsol.solveGS(U, U0, B, NV, SM);
 
 	timer.end("guessed_u");
@@ -26,7 +27,7 @@ void FlowSolver::poisson_equation_for_p_prime()
 		double ae = SM.get_diag(ux.get_l(i + 1, j, k));
 		double as = SM.get_diag(uy.get_l(i, j, k) + stride);
 		double an = SM.get_diag(uy.get_l(i, j + 1, k) + stride);
-
+		
 		lapl += Sx * (f.get_diff_x(Side::east, i, j, k) / ae - f.get_diff_x(Side::west, i, j, k) / aw);
 		lapl += Sy * (f.get_diff_y(Side::north, i, j, k) / an - f.get_diff_y(Side::south, i, j, k) / as);
 
@@ -59,6 +60,7 @@ void FlowSolver::poisson_equation_for_p_prime()
 	while(true)
 	{
 		iter_p = iter_p + 1;
+		//if (iter_p > 4000) break;
 		//if (iter_p > iter_limit) break;
 		res = 0;
 		for (int k = 0; k < nz; k++) {
@@ -93,7 +95,7 @@ void FlowSolver::poisson_equation_for_p_prime()
 		//}
 		//if (max < eps0)	break;
 		//print(iter << " " << max)
-		
+		//print(iter_p)
 
 		p_prime.transfer_data_to(buffer);
 
@@ -224,24 +226,26 @@ void FlowSolver::solve_system(size_t steps_at_ones)
 			correction_for_simple();
 
 			double div = check_div();
-			if (sq % 100 == 0) print("div = " << div)
+			if (sq % 100 == 0) print("div = " << div << " " << sq)
 				if (div < 1e-5) break;
+			if (sq > 20000) { print("bad div"); break; }
 		}
 
 		ux.transfer_data_to(vx);
 		uy.transfer_data_to(vy);
 
-
 		timer.start("T,C equations");
 		form_rhs_for_heat_equation(b, true);
 		itsol.solveGS(T.get_ptr(), T0.get_ptr(), b, N, SMt);
+
 
 		//form_rhs_for_concentration_equation(b, true);
 		//itsol.solveGS(C.get_ptr(), C0.get_ptr(), b, N, SMc);
 		timer.end("T,C equations");
 
 
-		//if (Rav != 0) poisson_equation_pulsation_stream_function();
+		if (Rav != 0)
+			poisson_equation_pulsation_stream_function();
 
 
 		//if (q % 100 == 0) print(uy(nx / 4, ny / 2, 0) << " " << check_div());
