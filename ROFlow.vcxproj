@@ -138,6 +138,7 @@
     <ClCompile Include="FlowSimple.cpp" />
     <ClCompile Include="FlowHeat.cpp" />
     <ClCompile Include="FlowTest.cpp" />
+    <ClCompile Include="StreamFunction.cpp" />
     <ClCompile Include="toolkit.cpp" />
   </ItemGroup>
   <ItemGroup>

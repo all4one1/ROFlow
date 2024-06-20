@@ -51,6 +51,9 @@
     <ClCompile Include="form_matrix_and_rhs.cpp">
       <Filter>FlowSolver</Filter>
     </ClCompile>
+    <ClCompile Include="StreamFunction.cpp">
+      <Filter>FlowSolver</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FlowSolver.h">

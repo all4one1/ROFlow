@@ -118,6 +118,16 @@ FlowSolver::FlowSolver(Configuration config)
 	bufferVibr = ScalarVariable(nx, ny, nz, hx, hy, hz);
 	bufferVibr.set_all_boundaries(MathBoundary::Dirichlet);
 
+	
+	VibrX = ScalarVariable(nx, ny, nz, hx, hy, hz);
+	VibrX0 = ScalarVariable(nx, ny, nz, hx, hy, hz);
+	VibrY = ScalarVariable(nx, ny, nz, hx, hy, hz);
+	VibrY0 = ScalarVariable(nx, ny, nz, hx, hy, hz);
+	VibrX.set_all_boundaries(MathBoundary::Dirichlet);
+	VibrX0.set_all_boundaries(MathBoundary::Dirichlet);
+	VibrY.set_all_boundaries(MathBoundary::Dirichlet);
+	VibrY0.set_all_boundaries(MathBoundary::Dirichlet);
+
 	T = ScalarVariable(nx, ny, nz, hx, hy, hz);
 	T0 = ScalarVariable(nx, ny, nz, hx, hy, hz);
 
@@ -290,7 +300,7 @@ void FlowSolver::write_fields(std::string path)
 {
 	ofstream w(path);
 
-	w << "x, y, z, ux, uy, uz, P, T, C, SF, buffer" << endl;
+	w << "x, y, z, ux, uy, uz, P, T, C, SF, VibrX, VibrY, buffer" << endl;
 
 	double ux_ = 0, uy_ = 0, uz_ = 0;
 	double x = 0, y = 0, z = 0;
@@ -308,7 +318,7 @@ void FlowSolver::write_fields(std::string path)
 				w << x << " " << y << " " << z << " ";
 				w << ux_ << " " << uy_ << " " << uz_ << " ";
 				w << P(i, j, k) << " " << T(i, j, k) << " " << C(i, j, k) << " ";
-				w << SF(i, j, k) << " ";
+				w << SF(i, j, k) << " " << VibrX(i,j,k) << " " << VibrY(i,j,k) << " ";
 				
 				w << buffer(i,j,k) << " ";
 				w << endl;

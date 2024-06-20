@@ -28,6 +28,10 @@ void FlowSolver::poisson_equation_for_p_prime()
 		double as = SM.get_diag(uy.get_l(i, j, k) + stride);
 		double an = SM.get_diag(uy.get_l(i, j + 1, k) + stride);
 		
+		//lapl += Sx * (f.get_dx(Side::east, i, j, k) / ae - f.get_dx(Side::west, i, j, k) / aw);
+		//lapl += Sy * (f.get_dy(Side::north, i, j, k) / an - f.get_dy(Side::south, i, j, k) / as);
+
+
 		lapl += Sx * (f.get_diff_x(Side::east, i, j, k) / ae - f.get_diff_x(Side::west, i, j, k) / aw);
 		lapl += Sy * (f.get_diff_y(Side::north, i, j, k) / an - f.get_diff_y(Side::south, i, j, k) / as);
 
@@ -99,7 +103,7 @@ void FlowSolver::poisson_equation_for_p_prime()
 
 		p_prime.transfer_data_to(buffer);
 
-		//if (iter_p % 10000 == 0)	cout << "iter_p: " << iter_p << " res: " << res << " eps: " << eps << endl;
+		if (iter_p % 10000 == 0)	cout << "iter_p: " << iter_p << " res: " << res << " eps: " << abs_eps << endl;
 		//if (iter_p % 10000 == 0)	cout << "eps: " << abs(res - res0) << " " << eps << endl;
 	}
 	timer.end("p_prime");

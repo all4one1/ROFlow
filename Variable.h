@@ -159,7 +159,7 @@ struct Boundary
 			{
 				switch (side)
 				{
-				case Side::west:					
+				case Side::west:		
 					return (GETVALUE(0, j, k) - GETVALUE(nx - 1, j, k)) / (it->h);
 					break;
 				case Side::east:
@@ -414,10 +414,44 @@ struct ScalarVariable
 		}
 		if (side == Side::south)
 		{
-			if (i == nx - 1)
-				return boundary.normal_deriv(side, i, j, k);
+			if (j == 0)
+			{
+				if (i == 0 && boundary.type(Side::west) == MathBoundary::Periodic)
+					return (boundary(side, 1, j, k) - (boundary(side, nx - 1, j, k))) / (2 * hx);
+				if (i == nx - 1 && boundary.type(Side::east) == MathBoundary::Periodic)
+					return (boundary(side, 0, j, k) - (boundary(side, nx - 2, j, k))) / (2 * hx);
+				if (i == 0)				
+					return (boundary(side, i + 1, j, k) - (boundary(side, i, j, k))) / (hx);
+				else if (i == nx - 1)	
+					return (boundary(side, i, j, k) - (boundary(side, i - 1, j, k))) / (hx);
+				else                    
+					return (boundary(side, i + 1, j, k) - (boundary(side, i - 1, j, k))) / (2 * hx);
+			}
 			else
-				return GETDX(i + 1, i);
+			{
+				double f1 = 0.5 * (get_at_side(Side::west, i, j, k) + get_at_side(Side::west, i, j - 1, k));
+				double f2 = 0.5 * (get_at_side(Side::east, i, j, k) + get_at_side(Side::east, i, j - 1, k));
+				return (f2 - f1) / hx;
+			}
+		}
+
+		if (side == Side::north)
+		{
+			if (j == ny - 1)
+			{
+				if (i == 0 && boundary.type(Side::west) == MathBoundary::Periodic)
+					return (boundary(side, 1, j, k) - (boundary(side, nx - 1, j, k))) / (2 * hx);
+				if (i == nx - 1 && boundary.type(Side::east) == MathBoundary::Periodic)
+					return (boundary(side, 0, j, k) - (boundary(side, nx - 2, j, k))) / (2 * hx);				if (i == 0)				return (boundary(side, i + 1, j, k) - (boundary(side, i, j, k))) / (hx);
+				else if (i == nx - 1)	return (boundary(side, i, j, k) -     (boundary(side, i - 1, j, k))) / (hx);
+				else                    return (boundary(side, i + 1, j, k) - (boundary(side, i - 1, j, k))) / (2 * hx);
+			}
+			else
+			{
+				double f1 = 0.5 * (get_at_side(Side::west, i, j, k) + get_at_side(Side::west, i, j + 1, k));
+				double f2 = 0.5 * (get_at_side(Side::east, i, j, k) + get_at_side(Side::east, i, j + 1, k));
+				return (f2 - f1) / hx;
+			}
 		}
 
 
@@ -446,6 +480,50 @@ struct ScalarVariable
 			else
 				return GETDY(j + 1, j);
 		}
+
+		if (side == Side::west)
+		{
+			if (i == 0)
+			{
+				if (j == 0 && boundary.type(Side::south) == MathBoundary::Periodic)
+					return (boundary(side, i, 1, k) - (boundary(side, i, ny - 1, k))) / (2 * hy);
+				if (j == ny - 1 && boundary.type(Side::north) == MathBoundary::Periodic)
+					return (boundary(side, i, 0, k) - (boundary(side, i, ny - 2, k))) / (2 * hy);
+
+				if (j == 0)				return (boundary(side, i, j + 1, k) - (boundary(side, i, j, k))) / (hy);
+				else if (j == ny - 1)	return (boundary(side, i, j, k)		- (boundary(side, i , j - 1, k))) / (hy);
+				else                    return (boundary(side, i, j + 1, k) - (boundary(side, i, j - 1, k))) / (2 * hy);
+			}
+			else
+			{
+				double f1 = 0.5 * (get_at_side(Side::south, i, j, k) + get_at_side(Side::south, i - 1, j , k));
+				double f2 = 0.5 * (get_at_side(Side::north, i, j, k) + get_at_side(Side::north, i - 1, j , k));
+				return (f2 - f1) / hy;
+			}
+		}
+
+		if (side == Side::east)
+		{
+			if (i == nx - 1)
+			{
+				if (j == 0 && boundary.type(Side::south) == MathBoundary::Periodic)
+					return (boundary(side, i, 1, k) - (boundary(side, i, ny - 1, k))) / (2 * hy);
+				if (j == ny - 1 && boundary.type(Side::north) == MathBoundary::Periodic)
+					return (boundary(side, i, 0, k) - (boundary(side, i, ny - 2, k))) / (2 * hy);
+
+				if (j == 0)				return (boundary(side, i, j + 1, k) - (boundary(side, i, j, k))) / (hy);
+				else if (j == ny - 1)	return (boundary(side, i, j, k) - (boundary(side, i, j - 1, k))) / (hy);
+				else                    return (boundary(side, i, j + 1, k) - (boundary(side, i, j - 1, k))) / (2 * hy);
+			}
+			else
+			{
+				double f1 = 0.5 * (get_at_side(Side::south, i, j, k) + get_at_side(Side::south, i - 1, j, k));
+				double f2 = 0.5 * (get_at_side(Side::north, i, j, k) + get_at_side(Side::north, i - 1, j, k));
+				return (f2 - f1) / hy;
+			}
+		}
+
+
 		if (side == Side::center)
 		{
 			return (get_at_side(Side::north, i, j, k) - get_at_side(Side::south, i, j, k)) / (hy);
@@ -696,7 +774,38 @@ struct ScalarVariable
 		}
 	}
 
-
+	double get_neighbor(Side side, int i, int j, int k)
+	{
+		switch (side)
+		{
+		case Side::west:			
+			if (i == 0) return boundary(side, i, j, k);
+			else return (*this)(i - 1, j, k);
+			break;
+		case Side::east:
+			if (i == nx - 1) return boundary(side, i, j, k);
+			else return (*this)(i + 1, j, k);
+			break;
+		case Side::south:			
+			if (j == 0) return boundary(side, i, j, k);
+			else return (*this)(i, j - 1, k);
+			break;
+		case Side::north:
+			if (j == ny - 1) return boundary(side, i, j, k);
+			else return (*this)(i, j + 1, k);
+			break;
+		case Side::front:			
+			if (k == 0) return boundary(side, i, j, k);
+			else return (*this)(i, j, k - 1);
+			break;
+		case Side::back:
+			if (k == nz - 1) return boundary(side, i, j, k);
+			else return (*this)(i, j, k + 1);
+			break;
+		default:
+			break;
+		}
+	}
 
 	double* get_ptr()
 	{
@@ -717,7 +826,7 @@ struct ScalarVariable
 		return lapl;
 	}
 
-	double& operator()(int i, int j, int k)
+	double& operator()(int i, int j = 0, int k = 0)
 	{
 		return v[i + off * j + off2 * k];
 	}
@@ -2005,10 +2114,15 @@ struct StaticVector
 		y = y_;
 		z = z_;
 		double l = sqrt(x * x + y * y + z * z);
-		if (l == 0) std::cout << "L = 0, Error" << std::endl;
-		x = x / l;
-		y = y / l;
-		z = z / l;
+		if (l == 0)
+		{
+			x = y = z = 0;
+		}
+		{
+			x = x / l;
+			y = y / l;
+			z = z / l;
+		}
 	}
 
 	double operator() (Component c) const

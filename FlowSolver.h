@@ -29,6 +29,8 @@ public:
 	Velocity ux, uy, uz;
 	ScalarVariable P, P0, T, T0, C, C0, SF, SF0, p_prime;
 	ScalarVariable buffer, bufferU, bufferVibr;
+	ScalarVariable ksi, ksi0, curl, curl0;
+	ScalarVariable VibrX, VibrX0, VibrY, VibrY0;
 	double* vx_, * vy_, * vz_;
 
 	double* V, * V0, *U, *U0, * B, *Ap,  *b;
@@ -96,6 +98,9 @@ public:
 	void form_big_rhs(double* b, bool reset);
 
 	void poisson_equation_pulsation_stream_function();
+	void poisson_equation_pulsation_velocity_x();
+	void poisson_equation_pulsation_velocity_y();
+	void solve_stream_function(size_t steps_at_ones = SIZE_MAX);
 };
 
 
