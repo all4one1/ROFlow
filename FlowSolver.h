@@ -100,6 +100,8 @@ public:
 	void poisson_equation_pulsation_stream_function();
 	void poisson_equation_pulsation_velocity_x();
 	void poisson_equation_pulsation_velocity_y();
+	void make_vibr_buffer();
+
 	void solve_stream_function(size_t steps_at_ones = SIZE_MAX);
 };
 
