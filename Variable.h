@@ -442,7 +442,8 @@ struct ScalarVariable
 				if (i == 0 && boundary.type(Side::west) == MathBoundary::Periodic)
 					return (boundary(side, 1, j, k) - (boundary(side, nx - 1, j, k))) / (2 * hx);
 				if (i == nx - 1 && boundary.type(Side::east) == MathBoundary::Periodic)
-					return (boundary(side, 0, j, k) - (boundary(side, nx - 2, j, k))) / (2 * hx);				if (i == 0)				return (boundary(side, i + 1, j, k) - (boundary(side, i, j, k))) / (hx);
+					return (boundary(side, 0, j, k) - (boundary(side, nx - 2, j, k))) / (2 * hx);				
+				if (i == 0)				return (boundary(side, i + 1, j, k) - (boundary(side, i, j, k))) / (hx);
 				else if (i == nx - 1)	return (boundary(side, i, j, k) -     (boundary(side, i - 1, j, k))) / (hx);
 				else                    return (boundary(side, i + 1, j, k) - (boundary(side, i - 1, j, k))) / (2 * hx);
 			}
@@ -517,8 +518,8 @@ struct ScalarVariable
 			}
 			else
 			{
-				double f1 = 0.5 * (get_at_side(Side::south, i, j, k) + get_at_side(Side::south, i - 1, j, k));
-				double f2 = 0.5 * (get_at_side(Side::north, i, j, k) + get_at_side(Side::north, i - 1, j, k));
+				double f1 = 0.5 * (get_at_side(Side::south, i, j, k) + get_at_side(Side::south, i + 1, j, k));
+				double f2 = 0.5 * (get_at_side(Side::north, i, j, k) + get_at_side(Side::north, i + 1, j, k));
 				return (f2 - f1) / hy;
 			}
 		}

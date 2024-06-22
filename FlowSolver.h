@@ -94,8 +94,8 @@ public:
 	void form_matrix_test(SparseMatrix& M, double* b);
 	void form_rhs_test(double* b, bool reset);
 	
-	void form_big_matrix(SparseMatrix& M, double* b);
-	void form_big_rhs(double* b, bool reset);
+	void form_matrix_Uxyz(SparseMatrix& M, double* b);
+	void form_rhs_Uxyz(double* b, bool reset);
 
 	void poisson_equation_pulsation_stream_function();
 	void poisson_equation_pulsation_velocity_x();

@@ -356,9 +356,6 @@ void FlowSolver::form_rhs_for_heat_equation(double* b, bool reset)
 					bc(Side::back, SZ, hz, PhysCoef, k == nz - 1);
 				}
 
-
-
-
 			}
 		}
 	}

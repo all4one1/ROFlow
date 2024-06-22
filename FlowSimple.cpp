@@ -160,53 +160,6 @@ void FlowSolver::correction_for_simple()
 }
 
 
-void FlowSolver::solve_simple(size_t steps_at_ones)
-{
-	//form_matrix_test(SM, B);
-	form_big_matrix(SM, B);
-
-	for (size_t q = 0; q < steps_at_ones; q++)
-	{
-		iter++;
-		total_time += tau;
-
-		//form_rhs_test(B, true);
-		form_big_rhs(B, true);
-
-		int sq = 0;
-		while (true)
-		{
-			sq++;
-			form_big_rhs(B, true);
-			itsol.solveGS(U, U0, B, Nvx + Nvy, SM);
-			poisson_equation_for_p_prime();
-			correction_for_simple();
-
-			double div = check_div();
-			if (sq % 100 == 0) print(div)
-				if (div < 1e-4) break;
-		}
-
-		ux.transfer_data_to(vx);
-		uy.transfer_data_to(vy);
-		if (q % 100 == 0) print(ux(nx / 2, ny / 2, 0) << " " << check_div());
-	}
-
-
-	auto FF = [this](int j)
-		{
-			double dp = P.boundary.get_fixed_value(Side::east) - P.boundary.get_fixed_value(Side::west);
-			double y = vx.y_(j);
-			return Re * 0.5 * (dp) / Lx * (y * y - y * Ly);
-		};
-
-	for (int j = 0; j < ny; j++)
-	{
-		cout << fixed << vx.y_(j) << " " << vx(0, j, 0) << " " << vx(nx / 2, j, 0) << " " << FF(j) << endl;
-	}
-
-}
-
 void FlowSolver::solve_system(size_t steps_at_ones)
 {
 	if (iter == 0)
@@ -249,7 +202,12 @@ void FlowSolver::solve_system(size_t steps_at_ones)
 
 
 		if (Rav != 0)
-			poisson_equation_pulsation_stream_function();
+		{
+			//poisson_equation_pulsation_stream_function();
+			poisson_equation_pulsation_velocity_x();
+			poisson_equation_pulsation_velocity_y();
+			make_vibr_buffer();
+		}
 
 
 		//if (q % 100 == 0) print(uy(nx / 4, ny / 2, 0) << " " << check_div());

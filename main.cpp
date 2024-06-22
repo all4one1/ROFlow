@@ -13,7 +13,7 @@ int main(int argc, char** argv)
 	Configuration config;
 
 	// n, Dim, Lx, Ly, Lz
-	config.set_uniform(20, "2D", 2.0, 1.0); 
+	config.set_uniform(20, "3D", 1.0, 1.0, 1.0); 
 	//config.set_cell_number(3, 3); 	config.set_domain_LxLyLz(1, 2, 1);
 	config.tau = 1e+100;
 	config.tau = 0.01;
@@ -26,13 +26,14 @@ int main(int argc, char** argv)
 	solver.Rav = 4000;
 
 	solver.grav.set_directly_xyz(0, 1, 0);
-	solver.vibr.set_directly_xyz(0, 1, 0);
+	solver.vibr.set_directly_xyz(1, 0, 0);
 
-	solver.set_period_pair(Side::west, Side::east);			    
+	//solver.set_period_pair(Side::west, Side::east);			    
 	solver.T.boundary.set_boundary(Side::south, MathBoundary::Dirichlet, 1);
 	solver.T.boundary.set_boundary(Side::north, MathBoundary::Dirichlet, 0);
 	
-
+	solver.solve_heat_equation(1000);
+	solver.T.write3D();
 
 
 
@@ -63,17 +64,16 @@ int main(int argc, char** argv)
 	solver.timer.start("total");
 
 	double R = 0;
-
+	solver.Ra = 0;
 	
-	for (double R = 5000; R > 1000; R = R - 25)
+	for (double R = 3000; R > 1000; R = R - 50)
 	{
 		solver.reset();
-		solver.Ra = R;
-		solver.solve_system(size_t(1.0 / config.tau) * 100);  //size_t(1.0 / config.tau) * 2000
+		solver.Rav = R;
+		#define TT(i) size_t(1.0 / config.tau) * i
+		solver.solve_system(TT(0));  //size_t(1.0 / config.tau) * 2000
 		solver.finalize();
 	}
-
-
 
 
 	solver.timer.end("total");

@@ -142,7 +142,8 @@ void FlowSolver::poisson_equation_pulsation_velocity_x()
 						laplace(VibrX0, i, j, k) - bufferU(i, j, k)
 						);
 
-					res = res + abs(VibrX[l]);
+					if (i > 0 && i < nx - 1 && j > 0 && j < ny - 1)
+						res = res + abs(VibrX[l]);
 				}
 			}
 		}
@@ -212,7 +213,8 @@ void FlowSolver::poisson_equation_pulsation_velocity_y()
 						laplace(VibrY0, i, j, k) - bufferU(i, j, k)
 						);
 
-					res = res + abs(VibrY[l]);
+					if (i > 0 && i < nx - 1 && j > 0 && j < ny - 1)
+						res = res + abs(VibrY[l]);
 				}
 			}
 		}
