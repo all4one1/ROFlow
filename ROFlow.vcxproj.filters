@@ -54,6 +54,9 @@
     <ClCompile Include="StreamFunction.cpp">
       <Filter>FlowSolver</Filter>
     </ClCompile>
+    <ClCompile Include="FlowVibrations.cpp">
+      <Filter>FlowSolver</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="FlowSolver.h">

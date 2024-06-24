@@ -309,8 +309,11 @@ struct Boundary
 		if (b[side].type == MathBoundary::Dirichlet)
 			return b[side].value;
 		//else if (b[side].type == MathBoundary::Periodic)
-		else
+		else 
+		{
+			print("incorrect bc type");
 			MYERROR("incorrect bc type");
+		}
 	}
 
 	One& operator[](Side side)
@@ -330,6 +333,7 @@ struct ScalarVariable
 	double Sx = 0, Sy = 0, Sz = 0;
 	int nx = 1, ny = 1, nz = 1;
 	int off = 0, off2 = 0, N = 0, Nb = 0;
+	int stride = 0;
 	int xExtra = 0, yExtra = 0, zExtra = 0;
 	char dim = 1;
 	Boundary boundary;
@@ -815,7 +819,7 @@ struct ScalarVariable
 
 	int get_l(int i, int j = 0, int k = 0)
 	{
-		return i + off * j + off2 * k;
+		return i + off * j + off2 * k + stride;
 	}
 
 	double laplace_finite_volume(int i, int j, int k)
@@ -1016,9 +1020,10 @@ struct Velocity : public ScalarVariable
 
 	Velocity(Component type_, int nx_, int ny_, int nz_,
 		double hx_, double hy_, double hz_,
-		bool newPointer = true, double* ptr = nullptr)
+		bool newPointer = true, double* ptr = nullptr, int stride_ = 0)
 		: ScalarVariable(nx_, ny_, nz_, hx_, hy_, hz_, newPointer, ptr), type(type_)
 	{
+		stride = stride_;
 		dim = 3;
 		if (nz == 1) dim = dim - 1;
 		if (ny == 1) dim = dim - 1;
@@ -1034,7 +1039,7 @@ struct Velocity : public ScalarVariable
 		if (type == Component::y)
 		{
 			if (dim >= 2)	off = nx;
-			if (dim >= 3)	off2 = (ny + 1) * nz;
+			if (dim >= 3)	off2 = (ny + 1) * nx;
 			N = nx * (ny + 1) * nz;
 			yExtra = 1;
 		}

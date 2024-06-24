@@ -88,13 +88,13 @@ FlowSolver::FlowSolver(Configuration config)
 	vy_ = &V[stride];
 	vz_ = &V[stride2];
 
-	vx = Velocity(Component::x, nx, ny, nz, hx, hy, hz, false, vx_);
-	vy = Velocity(Component::y, nx, ny, nz, hx, hy, hz, false, vy_);
-	vz = Velocity(Component::z, nx, ny, nz, hx, hy, hz, false, vz_);
+	vx = Velocity(Component::x, nx, ny, nz, hx, hy, hz, false, &V[0], 0);
+	vy = Velocity(Component::y, nx, ny, nz, hx, hy, hz, false, &V[stride], stride);
+	vz = Velocity(Component::z, nx, ny, nz, hx, hy, hz, false, &V[stride2], stride2);
 
-	ux = Velocity(Component::x, nx, ny, nz, hx, hy, hz, false, &U[0]);
-	uy = Velocity(Component::y, nx, ny, nz, hx, hy, hz, false, &U[stride]);
-	uz = Velocity(Component::z, nx, ny, nz, hx, hy, hz, false, &U[stride2]);
+	ux = Velocity(Component::x, nx, ny, nz, hx, hy, hz, false, &U[0], 0);
+	uy = Velocity(Component::y, nx, ny, nz, hx, hy, hz, false, &U[stride], stride);
+	uz = Velocity(Component::z, nx, ny, nz, hx, hy, hz, false, &U[stride2], stride2);
 
 
 	//vx_prime = Velocity(Component::x, nx, ny, nz, hx, hy, hz);
@@ -137,8 +137,16 @@ FlowSolver::FlowSolver(Configuration config)
 	grav.set_directly_xyz(0, 1, 0);
 	vibr.set_directly_xyz(0, 1, 0);
 
-	stats.open();
+	final.open(true, "results\\final.dat");
 	temporal.open(false, "results\\temporal.dat");
+
+
+	back = BackUp(false);
+	back.add(N, T.get_ptr(), "T");
+	back.add(N, P.get_ptr(), "P");
+	back.add(Nvx, ux.get_ptr(), "ux");
+	if (dim > 1) back.add(Nvy, uy.get_ptr(), "uy");
+	if (dim > 2) back.add(Nvz, uz.get_ptr(), "uz");
 }
 
 
@@ -253,7 +261,6 @@ double FlowSolver::check_div()
 	}
 	return abs(div);
 }
-
 double FlowSolver::check_div2()
 {
 	double max = 0;
@@ -270,7 +277,10 @@ double FlowSolver::check_div2()
 	}
 	return max;
 }
-
+double FlowSolver::Aii(Velocity& v, int i, int j, int k)
+{
+	return SM.get_diag(v.get_l(i, j, k));
+}
 
 void FlowSolver::statistics(double &Ek, double &Vmax)
 {
@@ -298,6 +308,8 @@ void FlowSolver::statistics(double &Ek, double &Vmax)
 
 void FlowSolver::write_fields(std::string path)
 {
+	timer.start("writings");
+
 	ofstream w(path);
 
 	w << "x, y, z, ux, uy, uz, P, T, C, SF, VibrX, VibrY, buffer" << endl;
@@ -325,12 +337,45 @@ void FlowSolver::write_fields(std::string path)
 			}
 		}
 	}
-	
+	timer.end("writings");
 }
 
 
+void FlowSolver::write_section_xz(int j, std::string path)
+{
+	timer.start("writings");
+
+	ofstream w(path);
+
+	w << "x, z, ux, uy, uz, P, T, C, SF, VibrX, VibrY, buffer" << endl;
+
+	double ux_ = 0, uy_ = 0, uz_ = 0;
+	double x = 0, y = 0, z = 0;
+	for (int k = 0; k < nz; k++) {
+			for (int i = 0; i < nx; i++) {
+				x = P.x_(i);
+				if (dim > 1) y = P.y_(j);
+				if (dim > 2) z = P.z_(k);
+
+				ux_ = 0.5 * (ux(i + 1, j, k) + ux(i, j, k));
+				if (dim > 1) uy_ = 0.5 * (uy(i, j + 1, k) + uy(i, j, k));
+				if (dim > 2) uz_ = 0.5 * (uz(i, j, k + 1) + uz(i, j, k));
+
+				w << x << " " << z << " ";
+				w << ux_ << " " << uy_ << " " << uz_ << " ";
+				w << P(i, j, k) << " " << T(i, j, k) << " " << C(i, j, k) << " ";
+				w << SF(i, j, k) << " " << VibrX(i, j, k) << " " << VibrY(i, j, k) << " ";
+
+				w << buffer(i, j, k) << " ";
+				w << endl;
+			}
+	}
+	timer.end("writings");
+}
+
 void FlowSolver::reset()
 {
+	stop_signal = 0;
 	iter = 0;
 	total_time = 0;
 	check_Ek = Checker();
@@ -344,8 +389,30 @@ void FlowSolver::finalize()
 	double Ek, Vmax;
 	statistics(Ek, Vmax);
 
-	stats.write_header("Ra, Rav, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif");
-	stats.write({ Ra, Rav, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif});
+	final.write_header("Ra, Rav, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif");
+	final.write({ Ra, Rav, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif});
 
 	write_fields();
+}
+void FlowSolver::recover()
+{
+	back.recover("T", T.get_ptr());
+	T.transfer_data_to(T0);
+
+	back.recover("P", P.get_ptr());
+
+	back.recover("ux", ux.get_ptr());
+	ux.transfer_data_to(vx);
+
+	if (dim > 1)
+	{
+		back.recover("uy", uy.get_ptr());
+		uy.transfer_data_to(vy);
+	}
+
+	if (dim > 2)
+	{
+		back.recover("uz", uz.get_ptr());
+		uz.transfer_data_to(vz);
+	}
 }

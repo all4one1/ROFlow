@@ -3,9 +3,12 @@
 #include <map>
 #include <sstream>
 #include <string>
+#include <iomanip>
 #ifdef _WIN32
 #include "Windows.h"
 #endif // 
+
+
 
 struct Checker
 {
@@ -77,7 +80,7 @@ struct StateOut
 		create_folder("results");
 	}
 
-	void open(bool append = true, std::string path = "results\\stats.dat")
+	void open(bool append = true, std::string path = "results\\final.dat")
 	{
 		if (append)
 		{
@@ -135,6 +138,20 @@ struct StateOut
 	}
 
 
+	static void simple_write(size_t global_iter, std::string s, std::vector<double> v, size_t each = 1)
+	{
+		if (global_iter == 1) ofstream file(s);
+		if (global_iter % each == 0)
+		{
+			ofstream file(s, std::ios_base::app);
+			for (auto& it : v)
+				file << it << " ";
+			file << std::endl;
+		}
+	}
+
+
+
 	//std::string int_to_str(int i)
 	//{
 	//	std::stringstream ss;
@@ -184,14 +201,16 @@ public:
 
 	double get(std::string s)
 	{
-		if (timer.find(s) == timer.end())
+		if (t1.find(s) == t1.end())
 		{
 			std::cout << s + " trigger not started" << std::endl;
 			return 0.0;
 		}
 		else
 		{
-			return timer[s];
+			t2[s] = clock();
+			dt = (t2[s] - t1[s]) / CLOCKS_PER_SEC;
+			return timer[s] + dt;
 		}
 	}
 
@@ -219,4 +238,96 @@ public:
 		file << get_info() << std::endl;
 	}
 
+};
+
+
+struct BackUp
+{
+private:
+	struct OneField
+	{
+		int n = 0;
+		double* d = nullptr;
+		std::string name;
+		OneField(int n_ = 0, double* d_ = nullptr, std::string name_ = "") : n(n_), d(d_), name(name_) {}
+	};
+	std::vector<OneField> fields;
+
+	std::ofstream write[2];
+	std::ifstream read;
+	int copy = 1;
+
+public:
+	//BackUp(){}
+	BackUp(bool withCopy = false)
+	{
+		if (withCopy) copy = 2;
+	}
+
+	void add(int n, double* d, std::string str)
+	{
+		fields.emplace_back(n, d, str);
+	}
+
+	void save_fields()
+	{
+		open_write();
+		for (auto& it : fields)
+		{
+			for (int q = 0; q < copy; q++)
+			{
+				write[q] << it.name << " " << it.n << " ";
+				for (int i = 0; i < it.n; i++)
+					write[q] << it.d[i] << " ";
+				write[q] << endl;
+			}
+		}
+		close_write();
+	}
+
+	void recover(std::string str, double* f)
+	{
+		open_read();
+		std::stringstream ss;
+		std::string line;
+
+
+		while (getline(read, line))
+		{
+			std::string symbol;
+			ss.str("");
+			ss.clear();
+			ss << line;
+			ss >> symbol;
+			if (str == symbol)
+			{
+				int n = 0;
+				ss >> n;
+				for (int i = 0; i < n; i++)
+					ss >> f[i];
+			}
+		}
+	}
+
+
+
+private:
+	void open_write()
+	{
+		write[0].open("recovery.dat");
+		if (copy == 2)	write[1].open("recovery2.dat");
+	}
+	void close_write()
+	{
+		write[0].close();
+		if (copy == 2)	write[1].close();
+	}
+	void open_read()
+	{
+		read.open("recovery.dat");
+	}
+	void close_read()
+	{
+		read.close();
+	}
 };

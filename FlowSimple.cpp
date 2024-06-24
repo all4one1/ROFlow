@@ -6,8 +6,7 @@ void FlowSolver::guessed_velocity_for_simple()
 {
 	timer.start("guessed_u");
 	form_rhs_test(B, true);
-	//form_big_rhs(B, true);
-	//itsol.solveGS(U, U0, B, NV, SM);
+	//form_rhs_Uxyz(B, true);
 	itsol.solveGS(U, U0, B, NV, SM);
 
 	timer.end("guessed_u");
@@ -15,31 +14,66 @@ void FlowSolver::guessed_velocity_for_simple()
 void FlowSolver::poisson_equation_for_p_prime()
 {
 	timer.start("p_prime");
-	double tau_p = 20.25 * pow(fmin(fmin(hx, hy), hz), 2);
-	int iter_p = 0;
-	double res, res0 = 0;
-	double abs_eps = 1, rel_eps = 1, eps0 = 1e-4;
+	double hmin = hx;
+	if (dim > 1) hmin = fmin(hmin, hy);
+	if (dim > 2) hmin = fmin(hmin, hz);
 
-	auto laplace = [this](ScalarVariable& f, int i, int j = 0, int k = 0)
+	double tau_p = 20.25 * pow(hmin, 2);
+	iter_p = 0;
+	double res = 0, res0 = 0;
+	double abs_eps = 1, rel_eps = 1, eps0 = 1e-5;
+
+	
+
+	double a[6] = { 0,0,0,0,0,0 };
+
+	double max_ = 0;
+	double min_ = 10000;
+	for (int k = 0; k < nz; k++) {
+		for (int j = 0; j < ny; j++) {
+			for (int i = 0; i < nx; i++) {
+				a[0] = SM.get_diag(ux.get_l(i, j, k));
+				a[1] = SM.get_diag(ux.get_l(i + 1, j, k));
+				if (dim > 1) {
+					a[2] = SM.get_diag(uy.get_l(i, j, k));
+					a[3] = SM.get_diag(uy.get_l(i, j + 1, k));
+				}
+				if (dim > 2) {
+					a[4] = SM.get_diag(uz.get_l(i, j, k));
+					a[5] = SM.get_diag(uz.get_l(i, j, k + 1));
+				}
+				for (int i = 0; i < 6; i++)
+				{
+					if (a[i] > max_) max_ = a[i];
+					if (a[i] < min_ && a[i] > 0) min_ = a[i];
+				}
+			}
+		}
+	}
+	//print(min_ * hmin / (2 * dim));
+	tau_p = min_ * hmin / (2 * dim) * 0.99;
+
+	
+	auto laplace = [&a, this](ScalarVariable& f, int i, int j = 0, int k = 0)
 	{
 		double lapl = 0.0;
-		double aw = SM.get_diag(ux.get_l(i, j, k));
-		double ae = SM.get_diag(ux.get_l(i + 1, j, k));
-		double as = SM.get_diag(uy.get_l(i, j, k) + stride);
-		double an = SM.get_diag(uy.get_l(i, j + 1, k) + stride);
-		
-		//lapl += Sx * (f.get_dx(Side::east, i, j, k) / ae - f.get_dx(Side::west, i, j, k) / aw);
-		//lapl += Sy * (f.get_dy(Side::north, i, j, k) / an - f.get_dy(Side::south, i, j, k) / as);
+		a[0] = SM.get_diag(ux.get_l(i, j, k));
+		a[1] = SM.get_diag(ux.get_l(i + 1, j, k));
+		lapl += Sx * (f.get_diff_x(Side::east, i, j, k) / a[1] - f.get_diff_x(Side::west, i, j, k) / a[0]);
 
-
-		lapl += Sx * (f.get_diff_x(Side::east, i, j, k) / ae - f.get_diff_x(Side::west, i, j, k) / aw);
-		lapl += Sy * (f.get_diff_y(Side::north, i, j, k) / an - f.get_diff_y(Side::south, i, j, k) / as);
-
-		//lapl += Sx * (f.get_dx(Side::east, i, j, k) / ae - f.get_dx(Side::west, i, j, k) / aw);
-		//lapl += Sy * (f.get_dy(Side::north, i, j, k) - f.get_dy(Side::south, i, j, k));
-		//lapl += Sz * (f.get_dz(Side::back, i, j, k) - f.get_dz(Side::front, i, j, k));
+		if (dim > 1) {
+			a[2] = SM.get_diag(uy.get_l(i, j, k));
+			a[3] = SM.get_diag(uy.get_l(i, j + 1, k));
+			lapl += Sy * (f.get_diff_y(Side::north, i, j, k) / a[3] - f.get_diff_y(Side::south, i, j, k) / a[2]);
+		}
+		if (dim > 2) {
+			a[4] = SM.get_diag(uz.get_l(i, j, k));
+			a[5] = SM.get_diag(uz.get_l(i, j, k + 1));
+			lapl += Sz * (f.get_diff_z(Side::back, i, j, k) / a[5] - f.get_diff_z(Side::front, i, j, k) / a[4]);
+		}
 		return lapl;
 	};
+
 
 	//double aw, ae, as, an, af, ab;
 	for (int k = 0; k < nz; k++) {
@@ -48,7 +82,8 @@ void FlowSolver::poisson_equation_for_p_prime()
 				int l = i + off * j + off2 * k; 
 				double div = 0.0;
 				div += Sx * (ux(i + 1, j, k) - ux(i, j, k));
-				div += Sy * (uy(i, j + 1, k) - uy(i, j, k));
+				if (dim > 1) div += Sy * (uy(i, j + 1, k) - uy(i, j, k));
+				if (dim > 2) div += Sz * (uz(i, j, k + 1) - uz(i, j, k));
 
 				bufferU(i, j, k) = div;
 			}
@@ -58,17 +93,17 @@ void FlowSolver::poisson_equation_for_p_prime()
 	buffer.reset_to_null();
 	buffer.boundary = p_prime.boundary;
 
-
+	
 
 	//while (eps > eps0 * res0)
 	while(true)
 	{
-		iter_p = iter_p + 1;
+		iter_p++;
 		//if (iter_p > 4000) break;
 		//if (iter_p > iter_limit) break;
 		res = 0;
+		#pragma omp parallel for num_threads(4) reduction(+:res)
 		for (int k = 0; k < nz; k++) {
-			#pragma omp parallel for num_threads(4) reduction(+:res)
 			for (int j = 0; j < ny; j++) {
 				for (int i = 0; i < nx; i++) {
 					int l = i + off * j + off2 * k;
@@ -90,21 +125,9 @@ void FlowSolver::poisson_equation_for_p_prime()
 		
 		if (abs_eps < eps0*10 || rel_eps < eps0) break;
 
-
-		//double max = 0;
-		//for (int l = 0; l < N; l++)
-		//{
-		//	double dif = abs(p_prime[l] - buffer[l]);
-		//	if (dif > max)	max = dif;
-		//}
-		//if (max < eps0)	break;
-		//print(iter << " " << max)
-		//print(iter_p)
-
 		p_prime.transfer_data_to(buffer);
 
 		if (iter_p % 10000 == 0)	cout << "iter_p: " << iter_p << " res: " << res << " eps: " << abs_eps << endl;
-		//if (iter_p % 10000 == 0)	cout << "eps: " << abs(res - res0) << " " << eps << endl;
 	}
 	timer.end("p_prime");
 
@@ -118,7 +141,7 @@ void FlowSolver::poisson_equation_for_p_prime()
 void FlowSolver::correction_for_simple()
 {
 	timer.start("correction");
-	double alpha = 1;
+	double alpha = alpha_relax;
 
 	for (int k = 0; k < nz; k++) {
 		for (int j = 0; j < ny; j++) {
@@ -143,7 +166,7 @@ void FlowSolver::correction_for_simple()
 		}
 	}
 
-	if (1)
+	if (1 && dim > 1)
 	{
 		for (int k = 0; k < nz; k++) {
 			for (int j = 0; j <= ny; j++) {
@@ -156,82 +179,129 @@ void FlowSolver::correction_for_simple()
 		}
 	}
 
+	if (1 && dim > 2)
+	{
+		for (int k = 0; k <= nz; k++) {
+			for (int j = 0; j < ny; j++) {
+				for (int i = 0; i < nx; i++) {
+					int l = i + uz.off * j + uz.off2 * k + stride2;
+					double v_prime = -(p_prime.get_shifted_diff(Component::z, i, j, k)) * Sz / SM(l, l);
+					uz(i, j, k) = uz(i, j, k) + v_prime;
+				}
+			}
+		}
+	}
+
+
 	timer.end("correction");
 }
 
 
-void FlowSolver::solve_system(size_t steps_at_ones)
+void FlowSolver::solve_system(size_t steps_at_ones, bool inTimeUnits)
 {
 	if (iter == 0)
 	{
-		//form_big_matrix(SM, B);
 		form_matrix_test(SM, B);
 		form_matrix_for_heat_equation(SMt, b);
 	}
-	
-	for (size_t q = 0; q < steps_at_ones; q++)
+	if (inTimeUnits)
+		steps_at_ones = size_t((1.0 / tau) * steps_at_ones);
+
+	auto tt = [this](double each)
+		{
+			size_t iterPerTimeUnit = tau > 1.0 ? 1 : size_t(1.0 / tau);
+			int d = int(each * iterPerTimeUnit);
+			if (d == 0)	return 1;
+			else return d;
+		};
+	#define EVERY(each) (iter) % tt(each)== 0
+
+
+
+
+	while (true)
 	{
 		iter++;
 		total_time += tau;
-		
-		int sq = 0;
-		while (true)
-		{
-			sq++;
-			guessed_velocity_for_simple();
-			poisson_equation_for_p_prime();
-			correction_for_simple();
-
-			double div = check_div2();
-			if (sq % 100 == 0) print("div = " << div << " " << sq)
-				if (div < 1e-5) break;
-			if (sq > 10000) { print("bad div"); break; }
-		}
-
-		ux.transfer_data_to(vx);
-		uy.transfer_data_to(vy);
+		if (iter >= steps_at_ones) stop_signal = 1;
 
 		timer.start("T,C equations");
 		form_rhs_for_heat_equation(b, true);
 		itsol.solveGS(T.get_ptr(), T0.get_ptr(), b, N, SMt);
-
-
 		//form_rhs_for_concentration_equation(b, true);
 		//itsol.solveGS(C.get_ptr(), C0.get_ptr(), b, N, SMc);
 		timer.end("T,C equations");
 
 
+		//alpha_relax = 0.75;
+		iter_div = 0;
+		while (1)
+		{
+			iter_div++;
+			guessed_velocity_for_simple();
+			poisson_equation_for_p_prime();
+			correction_for_simple_test();
+
+			double div = check_div2();
+			if (iter_div % 100 == 0) print("div = " << div << " " << iter_div)
+				if (div < 1e-5) break;
+			if (iter_div > 20000) { print("bad div"); break; }
+		}
+		StateOut::simple_write(iter, "iterations.dat", { double(iter), double(iter_div), double(iter_p)});
+
+		ux.transfer_data_to(vx);
+		uy.transfer_data_to(vy);
+		uz.transfer_data_to(vz);
+
+
 		if (Rav != 0)
 		{
-			//poisson_equation_pulsation_stream_function();
-			poisson_equation_pulsation_velocity_x();
-			poisson_equation_pulsation_velocity_y();
-			make_vibr_buffer();
+			poisson_equation_pulsation_stream_function();
+			//poisson_equation_pulsation_velocity_x();
+			//poisson_equation_pulsation_velocity_y();
+			//make_vibr_buffer();
 		}
 
 
-		//if (q % 100 == 0) print(uy(nx / 4, ny / 2, 0) << " " << check_div());
-		
-		if ((q + 1) % 100 == 0)
+
+		if (EVERY(1))
 		{
+			double t_ = timer.get("total");
 			double Ek, Vmax;
 			statistics(Ek, Vmax);
+			cout << iter << ", t = " << total_time << ", t_c = " << t_ << " (" << t_/60 << "), Ek = " << Ek << ", Vmax = " << Vmax << endl;
+		}
 
-			print(iter << ", t = " << total_time << ", Ek = " << Ek << ", Vmax = " << Vmax);
+		
+		if (EVERY(1))
+		{
+			double t_ = timer.get("total");
+			double Ek, Vmax;
+			statistics(Ek, Vmax);
 			
-			temporal.write_header("Ra, Rav, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif");
-			temporal.write({ Ra, Rav, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif });
+			temporal.write_header("Ra, Rav, total_time, compute_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif, iter_div, iter_p");
+			temporal.write({ Ra, Rav, total_time, t_, Ek, Vmax, check_Ek.dif, check_Ek.long_dif, double(iter_div), double(iter_p)});
+
 
 
 			if (check_Ek.stop(Ek, false))
 			{
-				break;
+				stop_signal = 1;
 			}
 		}
-		if ((q + 1) % 1000 == 0)
+
+		if (EVERY(10))
 		{
 			write_fields("F.dat");
+			write_section_xz(ny / 2);
+			back.save_fields();
 		}
 
+
+		if (stop_signal)
+		{
+			finalize();
+			break;
+		}
 	}
 }

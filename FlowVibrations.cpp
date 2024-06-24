@@ -4,7 +4,7 @@
 void FlowSolver::poisson_equation_pulsation_stream_function()
 {
 	timer.start("SF poisson");
-	double tau_p = 0.25 * pow(fmin(fmin(hx, hy), hz), 2);
+	double tau_p = pow(fmin(fmin(hx, hy), hz), 2) / (dim * 2.0) * 0.99;
 	int iter_p = 0;
 	double res, res0 = 0;
 	double abs_eps = 1, rel_eps = 1, eps0 = 1e-6;
@@ -14,11 +14,10 @@ void FlowSolver::poisson_equation_pulsation_stream_function()
 		{
 			double lapl = 0.0;
 
-			//lapl += Sx * (f.get_diff_x(Side::east, i, j, k)  - f.get_diff_x(Side::west, i, j, k));
-			//lapl += Sy * (f.get_diff_y(Side::north, i, j, k)  - f.get_diff_y(Side::south, i, j, k));
 			lapl += Sx * (f.get_dx(Side::east, i, j, k) - f.get_dx(Side::west, i, j, k));
 			lapl += Sy * (f.get_dy(Side::north, i, j, k) - f.get_dy(Side::south, i, j, k));
-
+			//if (dim > 1)
+			//if (dim > 2) lapl += Sz * (f.get_dz(Side::back, i, j, k) - f.get_dz(Side::front, i, j, k));
 			return lapl;
 		};
 

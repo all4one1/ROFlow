@@ -276,45 +276,6 @@ void FlowSolver::form_rhs_for_heat_equation(double* b, bool reset)
 				double DV = this->dV;
 				double rx = 1, ry = 1, rz = 1;
 
-				if (REDUCED)
-				{
-					if (dim > 0)
-					{
-						if ((i == 0 && F.boundary.type(Side::west) == MathBoundary::Dirichlet)
-							|| (i == (nx - 1) && F.boundary.type(Side::east) == MathBoundary::Dirichlet))
-						{
-							DV = DV * 0.75;
-							SY = SY * 0.75;
-							SZ = SZ * 0.75;
-							rx = 0.75;
-						}
-					}
-
-
-					if (dim > 1)
-					{
-						if ((j == 0 && F.boundary.type(Side::south) == MathBoundary::Dirichlet)
-							|| (j == (ny - 1) && F.boundary.type(Side::north) == MathBoundary::Dirichlet))
-						{
-							DV = DV * 0.75;
-							SX = SX * 0.75;
-							SZ = SZ * 0.75;
-							ry = 0.75;
-						}
-					}
-					if (dim > 2)
-					{
-						if ((k == 0 && F.boundary.type(Side::front) == MathBoundary::Dirichlet)
-							|| (k == (nz - 1) && F.boundary.type(Side::back) == MathBoundary::Dirichlet))
-						{
-							DV = DV * 0.75;
-							SX = SX * 0.75;
-							SY = SY * 0.75;
-							rz = 0.75;
-						}
-					}
-				}
-
 
 				b[l] = F0(i, j, k) * DV / tau;
 				b[l] += -vF(F0, i, j, k, SX*rx, SY*ry, SZ*rz);

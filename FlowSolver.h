@@ -40,16 +40,17 @@ public:
 	double hx, hy, hz, Sx, Sy, Sz, Lx, Ly, Lz, dV;
 	double Re = 1, Ra = 0, Rav = 0, Pr = 1, Gr = 0, Le = 1, K = 0;
 	double P_in = 0, P_out = 0, dP = 0.0;
+	double alpha_relax = 1.0;
 	StaticVector grav, vibr, dens;
 	double tau, total_time = 0.0;
-	size_t iter = 0, bytes_allocated = 0;
-	int iter_limit = 1000;
+	size_t iter = 0, iter_div = 0, iter_p = 0, iter_limit = 1000, bytes_allocated = 0;
+	int stop_signal = 0;
 	std::map <Side, PhysBoundary> phys_bc;
 	FuncTimer timer;
 	IterativeSolver itsol;
 	Checker check_Ek;
-	StateOut stats;
-	StateOut temporal;
+	StateOut final, temporal;
+	BackUp back;
 
 	FlowSolver(Configuration config);
 
@@ -77,12 +78,16 @@ public:
 	void poisson_equation_for_p_prime();
 	void correction_for_simple();
 	void solve_simple(size_t steps_at_ones = SIZE_MAX);
-	void solve_system(size_t steps_at_ones = SIZE_MAX);
+	void solve_system(size_t steps_at_ones = SIZE_MAX, bool inTimeUnits = false);
 	
+	double Aii(Velocity &v, int i, int j, int k);
 	double check_div();
 	double check_div2();
 	void statistics(double& Ek, double& Vmax);
 	void write_fields(std::string path = "results\\field.dat");
+	void write_section_xz(int j, std::string path = "results\\section_xy.dat");
+	void recover();
+
 	void finalize();
 	void reset();
 
@@ -93,6 +98,7 @@ public:
 
 	void form_matrix_test(SparseMatrix& M, double* b);
 	void form_rhs_test(double* b, bool reset);
+	void correction_for_simple_test();
 	
 	void form_matrix_Uxyz(SparseMatrix& M, double* b);
 	void form_rhs_Uxyz(double* b, bool reset);
