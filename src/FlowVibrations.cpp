@@ -1,5 +1,5 @@
 #include "FlowSolver.h"
-
+#define OMP 4
 
 void FlowSolver::poisson_equation_pulsation_stream_function()
 {
@@ -7,7 +7,7 @@ void FlowSolver::poisson_equation_pulsation_stream_function()
 	double tau_p = pow(fmin(fmin(hx, hy), hz), 2) / (dim * 2.0) * 0.99;
 	int iter_p = 0;
 	double res, res0 = 0;
-	double abs_eps = 1, rel_eps = 1, eps0 = 1e-6;
+	double abs_eps = 1, rel_eps = 1, eps0 = 1e-5;
 
 
 	auto laplace = [this](ScalarVariable& f, int i, int j = 0, int k = 0)
@@ -49,14 +49,14 @@ void FlowSolver::poisson_equation_pulsation_stream_function()
 		iter_p = iter_p + 1;
 		//if (iter_p > iter_limit) break;
 		res = 0;
+		#pragma omp parallel for num_threads(OMP) reduction(+:res)
 		for (int k = 0; k < nz; k++) {
-			#pragma omp parallel for num_threads(4) reduction(+:res)
 			for (int j = 0; j < ny; j++) {
 				for (int i = 0; i < nx; i++) {
 					int l = i + off * j + off2 * k;
 
 					SF[l] = SF0[l] + tau_p / dV * (
-						laplace(SF0, i, j, k) - bufferU(i, j, k)
+						laplace(SF0, i, j, k) + bufferU(i, j, k)
 						);
 
 					res = res + abs(SF[l]);

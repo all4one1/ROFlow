@@ -1,12 +1,13 @@
 #include "FlowSolver.h"
 #include <omp.h>
 
+#define OMP 4
 
 void FlowSolver::guessed_velocity_for_simple()
 {
 	timer.start("guessed_u");
-	form_rhs_test(B, true);
-	//form_rhs_Uxyz(B, true);
+	//form_rhs_test(B, true);
+	form_rhs_Uxyz(B, true);
 	itsol.solveGS(U, U0, B, NV, SM);
 
 	timer.end("guessed_u");
@@ -21,7 +22,7 @@ void FlowSolver::poisson_equation_for_p_prime()
 	double tau_p = 20.25 * pow(hmin, 2);
 	iter_p = 0;
 	double res = 0, res0 = 0;
-	double abs_eps = 1, rel_eps = 1, eps0 = 1e-5;
+	double abs_eps = 1, rel_eps = 1, eps0 = 1e-4;
 
 	
 
@@ -102,7 +103,7 @@ void FlowSolver::poisson_equation_for_p_prime()
 		//if (iter_p > 4000) break;
 		//if (iter_p > iter_limit) break;
 		res = 0;
-		#pragma omp parallel for num_threads(4) reduction(+:res)
+		#pragma omp parallel for num_threads(OMP) reduction(+:res)
 		for (int k = 0; k < nz; k++) {
 			for (int j = 0; j < ny; j++) {
 				for (int i = 0; i < nx; i++) {
@@ -142,7 +143,7 @@ void FlowSolver::correction_for_simple()
 {
 	timer.start("correction");
 	double alpha = alpha_relax;
-
+	alpha = 0.1;
 	for (int k = 0; k < nz; k++) {
 		for (int j = 0; j < ny; j++) {
 			for (int i = 0; i < nx; i++) {
@@ -201,7 +202,8 @@ void FlowSolver::solve_system(size_t steps_at_ones, bool inTimeUnits)
 {
 	if (iter == 0)
 	{
-		form_matrix_test(SM, B);
+		//form_matrix_test(SM, B);
+		form_matrix_Uxyz(SM, B);
 		form_matrix_for_heat_equation(SMt, b);
 	}
 	if (inTimeUnits)
@@ -215,8 +217,6 @@ void FlowSolver::solve_system(size_t steps_at_ones, bool inTimeUnits)
 			else return d;
 		};
 	#define EVERY(each) (iter) % tt(each)== 0
-
-
 
 
 	while (true)
@@ -235,16 +235,17 @@ void FlowSolver::solve_system(size_t steps_at_ones, bool inTimeUnits)
 
 		//alpha_relax = 0.75;
 		iter_div = 0;
+		double div = 0;
 		while (1)
 		{
 			iter_div++;
 			guessed_velocity_for_simple();
 			poisson_equation_for_p_prime();
-			correction_for_simple_test();
-
-			double div = check_div2();
-			if (iter_div % 100 == 0) print("div = " << div << " " << iter_div)
-				if (div < 1e-5) break;
+			//correction_for_simple_test();
+			correction_for_simple();
+			div = check_div2();
+			if (iter_div % 100 == 0) print("div = " << div << " " << iter_div);
+			if (div < 1e-4) break;
 			if (iter_div > 20000) { print("bad div"); break; }
 		}
 		StateOut::simple_write(iter, "iterations.dat", { double(iter), double(iter_div), double(iter_p)});
@@ -269,7 +270,8 @@ void FlowSolver::solve_system(size_t steps_at_ones, bool inTimeUnits)
 			double t_ = timer.get("total");
 			double Ek, Vmax;
 			statistics(Ek, Vmax);
-			cout << iter << ", t = " << total_time << ", t_c = " << t_ << " (" << t_/60 << "), Ek = " << Ek << ", Vmax = " << Vmax << endl;
+			cout << iter << ", t = " << total_time << ", t_c = " << t_ << " (" << t_/60 << "), Ek = " << Ek << ", Vmax = " << Vmax  << ", div = " << div << endl;
+			SF.show_max_min();
 		}
 
 		
@@ -290,10 +292,11 @@ void FlowSolver::solve_system(size_t steps_at_ones, bool inTimeUnits)
 			}
 		}
 
-		if (EVERY(10))
+		if (EVERY(5))
 		{
-			write_fields("F.dat");
+			write_fields();
 			write_section_xz(ny / 2);
+			write_section_xy(nz / 2);
 			back.save_fields();
 		}
 

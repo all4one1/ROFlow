@@ -1,5 +1,5 @@
 #pragma once
-#include "FromOuterSparse/SparseMatrix.h"
+#include "../FromOuterSparse/SparseMatrix.h"
 #include "IterativeSolver.h"
 #include "Configuration.h"
 #include "Variable.h"
@@ -41,6 +41,7 @@ public:
 	double Re = 1, Ra = 0, Rav = 0, Pr = 1, Gr = 0, Le = 1, K = 0;
 	double P_in = 0, P_out = 0, dP = 0.0;
 	double alpha_relax = 1.0;
+	double test_var = 0;
 	StaticVector grav, vibr, dens;
 	double tau, total_time = 0.0;
 	size_t iter = 0, iter_div = 0, iter_p = 0, iter_limit = 1000, bytes_allocated = 0;
@@ -85,7 +86,9 @@ public:
 	double check_div2();
 	void statistics(double& Ek, double& Vmax);
 	void write_fields(std::string path = "results\\field.dat");
-	void write_section_xz(int j, std::string path = "results\\section_xy.dat");
+	void write_section_xz(int j, std::string path = "results\\section_xz.dat");
+	void write_section_xy(int k, std::string path = "results\\section_xy.dat");
+
 	void recover();
 
 	void finalize();

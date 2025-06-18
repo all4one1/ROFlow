@@ -129,27 +129,27 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="FlowProjection.cpp" />
-    <ClCompile Include="FlowMain.cpp" />
-    <ClCompile Include="form_matrix_and_rhs.cpp" />
+    <ClCompile Include="FromOuterSparse\SparseMatrix_IO.cpp" />
+    <ClCompile Include="src\FlowProjection.cpp" />
+    <ClCompile Include="src\FlowMain.cpp" />
+    <ClCompile Include="src\form_matrix_and_rhs.cpp" />
     <ClCompile Include="FromOuterSparse\SparseMatrix.cpp" />
-    <ClCompile Include="FromOuterSparse\SparseMatrix2.cpp" />
-    <ClCompile Include="main.cpp" />
-    <ClCompile Include="FlowSimple.cpp" />
-    <ClCompile Include="FlowHeat.cpp" />
-    <ClCompile Include="FlowTest.cpp" />
-    <ClCompile Include="FlowVibrations.cpp" />
-    <ClCompile Include="StreamFunction.cpp" />
-    <ClCompile Include="toolkit.cpp" />
+    <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\FlowSimple.cpp" />
+    <ClCompile Include="src\FlowHeat.cpp" />
+    <ClCompile Include="src\FlowTest.cpp" />
+    <ClCompile Include="src\FlowVibrations.cpp" />
+    <ClCompile Include="src\StreamFunction.cpp" />
+    <ClCompile Include="src\toolkit.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="FlowSolver.h" />
+    <ClInclude Include="src\FlowSolver.h" />
     <ClInclude Include="FromOuterSparse\SparseMatrix.h" />
-    <ClInclude Include="Configuration.h" />
-    <ClInclude Include="Extras.h" />
-    <ClInclude Include="IterativeSolver.h" />
-    <ClInclude Include="Variable.h" />
-    <ClInclude Include="toolkit.h" />
+    <ClInclude Include="src\Configuration.h" />
+    <ClInclude Include="src\Extras.h" />
+    <ClInclude Include="src\IterativeSolver.h" />
+    <ClInclude Include="src\Variable.h" />
+    <ClInclude Include="src\toolkit.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitignore" />

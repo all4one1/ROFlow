@@ -21,63 +21,63 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="main.cpp">
+    <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="FlowMain.cpp">
+    <ClCompile Include="src\FlowMain.cpp">
       <Filter>FlowSolver</Filter>
     </ClCompile>
     <ClCompile Include="FromOuterSparse\SparseMatrix.cpp">
       <Filter>_tools</Filter>
     </ClCompile>
-    <ClCompile Include="FromOuterSparse\SparseMatrix2.cpp">
+    <ClCompile Include="src\toolkit.cpp">
       <Filter>_tools</Filter>
     </ClCompile>
-    <ClCompile Include="toolkit.cpp">
+    <ClCompile Include="src\FlowProjection.cpp">
+      <Filter>FlowSolver</Filter>
+    </ClCompile>
+    <ClCompile Include="src\FlowSimple.cpp">
+      <Filter>FlowSolver</Filter>
+    </ClCompile>
+    <ClCompile Include="src\FlowHeat.cpp">
+      <Filter>FlowSolver</Filter>
+    </ClCompile>
+    <ClCompile Include="src\FlowTest.cpp">
+      <Filter>FlowSolver</Filter>
+    </ClCompile>
+    <ClCompile Include="src\form_matrix_and_rhs.cpp">
+      <Filter>FlowSolver</Filter>
+    </ClCompile>
+    <ClCompile Include="src\StreamFunction.cpp">
+      <Filter>FlowSolver</Filter>
+    </ClCompile>
+    <ClCompile Include="src\FlowVibrations.cpp">
+      <Filter>FlowSolver</Filter>
+    </ClCompile>
+    <ClCompile Include="FromOuterSparse\SparseMatrix_IO.cpp">
       <Filter>_tools</Filter>
-    </ClCompile>
-    <ClCompile Include="FlowProjection.cpp">
-      <Filter>FlowSolver</Filter>
-    </ClCompile>
-    <ClCompile Include="FlowSimple.cpp">
-      <Filter>FlowSolver</Filter>
-    </ClCompile>
-    <ClCompile Include="FlowHeat.cpp">
-      <Filter>FlowSolver</Filter>
-    </ClCompile>
-    <ClCompile Include="FlowTest.cpp">
-      <Filter>FlowSolver</Filter>
-    </ClCompile>
-    <ClCompile Include="form_matrix_and_rhs.cpp">
-      <Filter>FlowSolver</Filter>
-    </ClCompile>
-    <ClCompile Include="StreamFunction.cpp">
-      <Filter>FlowSolver</Filter>
-    </ClCompile>
-    <ClCompile Include="FlowVibrations.cpp">
-      <Filter>FlowSolver</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="FlowSolver.h">
+    <ClInclude Include="src\FlowSolver.h">
       <Filter>FlowSolver</Filter>
     </ClInclude>
-    <ClInclude Include="toolkit.h">
+    <ClInclude Include="src\toolkit.h">
       <Filter>_tools</Filter>
     </ClInclude>
     <ClInclude Include="FromOuterSparse\SparseMatrix.h">
       <Filter>_tools</Filter>
     </ClInclude>
-    <ClInclude Include="Configuration.h">
+    <ClInclude Include="src\Configuration.h">
       <Filter>_tools</Filter>
     </ClInclude>
-    <ClInclude Include="Variable.h">
+    <ClInclude Include="src\Variable.h">
       <Filter>FlowSolver</Filter>
     </ClInclude>
-    <ClInclude Include="IterativeSolver.h">
+    <ClInclude Include="src\IterativeSolver.h">
       <Filter>FlowSolver</Filter>
     </ClInclude>
-    <ClInclude Include="Extras.h">
+    <ClInclude Include="src\Extras.h">
       <Filter>FlowSolver</Filter>
     </ClInclude>
   </ItemGroup>

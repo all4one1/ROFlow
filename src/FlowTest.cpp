@@ -622,7 +622,7 @@ void FlowSolver::form_rhs_test(double* b, bool reset)
 			- vy.get_for_vz_cell(Side::south, i, j, k) * vz.get_for_vz_cell(Side::south, i, j, k));
 		double FZ = Sz * (vz.get_for_vz_cell(Side::back, i, j, k) * vz.get_for_vz_cell(Side::back, i, j, k)
 			- vz.get_for_vz_cell(Side::front, i, j, k) * vz.get_for_vz_cell(Side::front, i, j, k));
-		return FX + FY + FZ;
+		return (FX + FY + FZ);
 	};
 	auto general = [this, b](int i, int j, int k, Velocity& u, Velocity& v0, Component comp, double tau, double dV,  double S, double h)
 		{
@@ -1029,7 +1029,7 @@ void FlowSolver::correction_for_simple_test()
 {
 	timer.start("correction");
 	double alpha = alpha_relax;
-
+	double max = 0;
 	for (int k = 0; k < nz; k++) {
 		for (int j = 0; j < ny; j++) {
 			for (int i = 0; i < nx; i++) {
@@ -1043,6 +1043,7 @@ void FlowSolver::correction_for_simple_test()
 			for (int i = 0; i <= nx; i++) {
 				int l = i + ux.off * j + ux.off2 * k;
 				double v_prime = -(p_prime.get_shifted_diff(Component::x, i, j, k)) * Sx / SM(l, l);
+				if (abs(v_prime) > max) max = v_prime;
 				ux(i, j, k) = alpha * ux(i, j, k) + (1.0 - alpha) * vx(i, j, k) + v_prime;
 			}
 		}
@@ -1055,6 +1056,7 @@ void FlowSolver::correction_for_simple_test()
 				for (int i = 0; i < nx; i++) {
 					int l = i + uy.off * j + uy.off2 * k + stride;
 					double v_prime = -(p_prime.get_shifted_diff(Component::y, i, j, k)) * Sy / SM(l, l);
+					if (abs(v_prime) > max) max = v_prime;
 					uy(i, j, k) = alpha * uy(i, j, k) + (1.0 - alpha) * vy(i, j, k) + v_prime;
 				}
 			}
@@ -1068,12 +1070,13 @@ void FlowSolver::correction_for_simple_test()
 				for (int i = 0; i < nx; i++) {
 					int l = i + uz.off * j + uz.off2 * k + stride2;
 					double v_prime = -(p_prime.get_shifted_diff(Component::z, i, j, k)) * Sz / SM(l, l);
+					if (abs(v_prime) > max) max = v_prime;
 					uz(i, j, k) = alpha * uz(i, j, k) + (1.0 - alpha) * vz(i, j, k) + v_prime;
 				}
 			}
 		}
 	}
-
+	test_var = max;
 
 	timer.end("correction");
 }

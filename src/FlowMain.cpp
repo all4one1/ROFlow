@@ -372,6 +372,39 @@ void FlowSolver::write_section_xz(int j, std::string path)
 	}
 	timer.end("writings");
 }
+void FlowSolver::write_section_xy(int k, std::string path)
+{
+	timer.start("writings");
+
+	ofstream w(path);
+
+	w << "x, y, ux, uy, uz, P, T, C, SF, VibrX, VibrY, buffer" << endl;
+
+	double ux_ = 0, uy_ = 0, uz_ = 0;
+	double x = 0, y = 0, z = 0;
+	for (int j = 0; j < ny; j++) {
+		for (int i = 0; i < nx; i++) {
+			x = P.x_(i);
+			if (dim > 1) y = P.y_(j);
+			if (dim > 2) z = P.z_(k);
+
+			ux_ = 0.5 * (ux(i + 1, j, k) + ux(i, j, k));
+			if (dim > 1) uy_ = 0.5 * (uy(i, j + 1, k) + uy(i, j, k));
+			if (dim > 2) uz_ = 0.5 * (uz(i, j, k + 1) + uz(i, j, k));
+
+			w << x << " " << y << " ";
+			w << ux_ << " " << uy_ << " " << uz_ << " ";
+			w << P(i, j, k) << " " << T(i, j, k) << " " << C(i, j, k) << " ";
+			w << SF(i, j, k) << " " << VibrX(i, j, k) << " " << VibrY(i, j, k) << " ";
+
+			w << buffer(i, j, k) << " ";
+			w << endl;
+		}
+	}
+	timer.end("writings");
+}
+
+
 
 void FlowSolver::reset()
 {
