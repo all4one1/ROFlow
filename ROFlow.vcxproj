@@ -120,6 +120,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>$(ProjectDir)src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -129,27 +130,32 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\solvers\SIMPLE\Simple_v1.cpp" />
     <ClCompile Include="FromOuterSparse\SparseMatrix_IO.cpp" />
-    <ClCompile Include="src\FlowProjection.cpp" />
-    <ClCompile Include="src\FlowMain.cpp" />
-    <ClCompile Include="src\form_matrix_and_rhs.cpp" />
+    <ClCompile Include="src\solvers\legacy\FlowProjection.cpp" />
+    <ClCompile Include="src\solvers\legacy\FlowMain.cpp" />
+    <ClCompile Include="src\solvers\legacy\form_matrix_and_rhs.cpp" />
     <ClCompile Include="FromOuterSparse\SparseMatrix.cpp" />
     <ClCompile Include="src\main.cpp" />
-    <ClCompile Include="src\FlowSimple.cpp" />
-    <ClCompile Include="src\FlowHeat.cpp" />
-    <ClCompile Include="src\FlowTest.cpp" />
-    <ClCompile Include="src\FlowVibrations.cpp" />
-    <ClCompile Include="src\StreamFunction.cpp" />
-    <ClCompile Include="src\toolkit.cpp" />
+    <ClCompile Include="src\solvers\legacy\FlowSimple.cpp" />
+    <ClCompile Include="src\solvers\legacy\FlowHeat.cpp" />
+    <ClCompile Include="src\solvers\legacy\FlowTest.cpp" />
+    <ClCompile Include="src\solvers\legacy\FlowVibrations.cpp" />
+    <ClCompile Include="src\solvers\legacy\StreamFunction.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\FlowSolver.h" />
+    <ClInclude Include="src\solvers\slau.h" />
+    <ClInclude Include="src\solvers\MatrixMaker.h" />
+    <ClInclude Include="src\solvers\SIMPLE\Simple_v1.h" />
+    <ClInclude Include="src\tools\common_tools.h" />
+    <ClInclude Include="src\newvar.h" />
+    <ClInclude Include="src\tools\project_tools.h" />
+    <ClInclude Include="src\tools\types.h" />
+    <ClInclude Include="src\solvers\legacy\FlowSolver.h" />
     <ClInclude Include="FromOuterSparse\SparseMatrix.h" />
     <ClInclude Include="src\Configuration.h" />
-    <ClInclude Include="src\Extras.h" />
-    <ClInclude Include="src\IterativeSolver.h" />
+    <ClInclude Include="src\solvers\legacy\IterativeSolver.h" />
     <ClInclude Include="src\Variable.h" />
-    <ClInclude Include="src\toolkit.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include=".gitignore" />

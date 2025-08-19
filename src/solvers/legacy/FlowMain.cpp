@@ -1,5 +1,5 @@
+#pragma once
 #include "FlowSolver.h"
-#include "toolkit.h"
 
 FlowSolver::FlowSolver(Configuration config)
 {
@@ -72,6 +72,13 @@ FlowSolver::FlowSolver(Configuration config)
 	stride  = Nvx;
 	stride2 = Nvx + Nvy;
 
+	auto alloc = [](double** f, unsigned int N)
+	{
+		*f = new double[N];
+		memset(*f, 0, sizeof(double) * N);
+		//return sizeof(double) * N;
+	};
+
 	SM.resize(NV);
 	alloc(&V, NV);
 	alloc(&V0, NV);
@@ -137,16 +144,16 @@ FlowSolver::FlowSolver(Configuration config)
 	grav.set_directly_xyz(0, 1, 0);
 	vibr.set_directly_xyz(0, 1, 0);
 
-	final.open(true, "results\\final.dat");
-	temporal.open(false, "results\\temporal.dat");
+	//final.open(true, "results\\final.dat");
+	//temporal.open(false, "results\\temporal.dat");
 
 
-	back = BackUp(false);
-	back.add(N, T.get_ptr(), "T");
-	back.add(N, P.get_ptr(), "P");
-	back.add(Nvx, ux.get_ptr(), "ux");
-	if (dim > 1) back.add(Nvy, uy.get_ptr(), "uy");
-	if (dim > 2) back.add(Nvz, uz.get_ptr(), "uz");
+	//back = BackUp(false);
+	//back.add(N, T.get_ptr(), "T");
+	//back.add(N, P.get_ptr(), "P");
+	//back.add(Nvx, ux.get_ptr(), "ux");
+	//if (dim > 1) back.add(Nvy, uy.get_ptr(), "uy");
+	//if (dim > 2) back.add(Nvz, uz.get_ptr(), "uz");
 }
 
 
@@ -411,7 +418,7 @@ void FlowSolver::reset()
 	stop_signal = 0;
 	iter = 0;
 	total_time = 0;
-	check_Ek = Checker();
+	//check_Ek = Checker();
 }
 void FlowSolver::finalize()
 {
@@ -422,30 +429,30 @@ void FlowSolver::finalize()
 	double Ek, Vmax;
 	statistics(Ek, Vmax);
 
-	final.write_header("Ra, Rav, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif");
-	final.write({ Ra, Rav, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif});
+	//final.write_header("Ra, Rav, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif");
+	//final.write({ Ra, Rav, total_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif});
 
 	write_fields();
 }
 void FlowSolver::recover()
 {
-	back.recover("T", T.get_ptr());
+	//back.recover("T", T.get_ptr());
 	T.transfer_data_to(T0);
 
-	back.recover("P", P.get_ptr());
+	//back.recover("P", P.get_ptr());
 
-	back.recover("ux", ux.get_ptr());
+	//back.recover("ux", ux.get_ptr());
 	ux.transfer_data_to(vx);
 
 	if (dim > 1)
 	{
-		back.recover("uy", uy.get_ptr());
+		//back.recover("uy", uy.get_ptr());
 		uy.transfer_data_to(vy);
 	}
 
 	if (dim > 2)
 	{
-		back.recover("uz", uz.get_ptr());
+		//back.recover("uz", uz.get_ptr());
 		uz.transfer_data_to(vz);
 	}
 }

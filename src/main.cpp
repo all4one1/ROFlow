@@ -1,56 +1,71 @@
-#define CODEVERSION 240624
+#define VERSION 0_0_1
 
-#include "toolkit.h"
-#include "Configuration.h"
-#include "FlowSolver.h"
+#include "tools/common_tools.h"
+#include "tools/project_tools.h"
+#include "newvar.h"
+#include "solvers/MatrixMaker.h"
+
+
+//#include "toolkit.h"
+//#include "Configuration.h"
+//#include "solvers/FlowSolver.h"
+
 
 #include <iostream>
 using std::cout;
 using std::endl;
 
+
+
 int main(int argc, char** argv)
 {
-	Configuration config;
+	Configuration config{};
 
-	
-	config.set_uniform(20, "2D", 1.0, 1.0); // n, Dim, Lx, Ly, Lz
-	config.tau = 0.01;
-	
+	init_parameters(config);
 
-	FlowSolver solver(config);
-	config.show_parameters();
+	Variable T(config);
+
+	SparseMatrix A(config.N), B(config.N), SM(config.N*2);
 
 
-	solver.K = 0;
-	solver.Pr = 7;
-	solver.Rav = 0;
-	solver.grav.set_directly_xyz(0, 1, 0);
+	MatrixMaker mk(config);
 
 
-	//solver.set_period_pair(Side::west, Side::east);			    
-	//solver.set_period_pair(Side::front, Side::back);	
-	solver.T.boundary.set_boundary(Side::east, MathBoundary::Neumann, 0);
-	solver.T.boundary.set_boundary(Side::west, MathBoundary::Neumann, 0);
-	solver.T.boundary.set_boundary(Side::south, MathBoundary::Dirichlet, 1);
-	solver.T.boundary.set_boundary(Side::north, MathBoundary::Dirichlet, 0);
+
+	//FlowSolver solver(config);
+	//config.show_parameters();
 
 
-	solver.timer.start("total");
-
-	double R = 6000;
-	//for (double R = 6000; R > 2000; R = R - 100)
-	{
-		solver.Ra = R;
-		solver.solve_system(200, true);  
-		solver.reset();
-	}
+	//solver.K = 0;
+	//solver.Pr = 7;
+	//solver.Rav = 0;
+	//solver.grav.set_directly_xyz(0, 1, 0);
 
 
-	solver.timer.end("total");
-	solver.timer.write_info();
+	////solver.set_period_pair(Side::west, Side::east);			    
+	////solver.set_period_pair(Side::front, Side::back);	
+	//solver.T.boundary.set_boundary(Side::east, MathBoundary::Neumann, 0);
+	//solver.T.boundary.set_boundary(Side::west, MathBoundary::Neumann, 0);
+	//solver.T.boundary.set_boundary(Side::south, MathBoundary::Dirichlet, 1);
+	//solver.T.boundary.set_boundary(Side::north, MathBoundary::Dirichlet, 0);
 
-	if (solver.N < 50)
-		solver.SM.save_full_matrix_with_rhs(5, solver.B);
+
+	//solver.timer.start("total");
+
+	//double R = 6000;
+	////for (double R = 6000; R > 2000; R = R - 100)
+	//{
+	//	solver.Ra = R;
+	//	solver.solve_system(200, true);  
+	//	solver.reset();
+	//}
+
+
+	//solver.timer.end("total");
+	//solver.timer.write_info();
+
+	//if (solver.N < 50)
+	//	solver.SM.save_full_matrix_with_rhs(5, solver.B);
 
 	cout << "end" << endl;
 	return 0;

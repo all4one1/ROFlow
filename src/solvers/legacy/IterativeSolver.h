@@ -3,7 +3,7 @@
 #include <iomanip>
 #include <fstream>
 
-#include "../FromOuterSparse/SparseMatrix.h"
+#include "../../../FromOuterSparse/SparseMatrix.h"
 
 using std::cout;
 using std::endl;

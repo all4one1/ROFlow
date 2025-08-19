@@ -1,7 +1,11 @@
+#pragma once
 #include "FlowSolver.h"
 #include <omp.h>
 
 #define OMP 4
+
+#define print(message) {std::cout << " (Line #" << __LINE__ << "): " << message << std::endl;}
+
 
 void FlowSolver::guessed_velocity_for_simple()
 {
@@ -248,7 +252,7 @@ void FlowSolver::solve_system(size_t steps_at_ones, bool inTimeUnits)
 			if (div < 1e-4) break;
 			if (iter_div > 20000) { print("bad div"); break; }
 		}
-		StateOut::simple_write(iter, "iterations.dat", { double(iter), double(iter_div), double(iter_p)});
+		//StateOut::simple_write(iter, "iterations.dat", { double(iter), double(iter_div), double(iter_p)});
 
 		ux.transfer_data_to(vx);
 		uy.transfer_data_to(vy);
@@ -281,12 +285,12 @@ void FlowSolver::solve_system(size_t steps_at_ones, bool inTimeUnits)
 			double Ek, Vmax;
 			statistics(Ek, Vmax);
 			
-			temporal.write_header("Ra, Rav, total_time, compute_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif, iter_div, iter_p");
-			temporal.write({ Ra, Rav, total_time, t_, Ek, Vmax, check_Ek.dif, check_Ek.long_dif, double(iter_div), double(iter_p)});
+			//temporal.write_header("Ra, Rav, total_time, compute_time, Ek, Vmax, check_Ek.dif, check_Ek.long_dif, iter_div, iter_p");
+			//temporal.write({ Ra, Rav, total_time, t_, Ek, Vmax, check_Ek.dif, check_Ek.long_dif, double(iter_div), double(iter_p)});
 
 
 
-			if (check_Ek.stop(Ek, false))
+			//if (check_Ek.stop(Ek, false))
 			{
 				stop_signal = 1;
 			}
@@ -297,7 +301,7 @@ void FlowSolver::solve_system(size_t steps_at_ones, bool inTimeUnits)
 			write_fields();
 			write_section_xz(ny / 2);
 			write_section_xy(nz / 2);
-			back.save_fields();
+			//back.save_fields();
 		}
 
 

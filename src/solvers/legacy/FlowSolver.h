@@ -1,9 +1,10 @@
 #pragma once
-#include "../FromOuterSparse/SparseMatrix.h"
+#include "../../../FromOuterSparse/SparseMatrix.h"
+#include "../../tools/common_tools.h"
+#include "../../Configuration.h"
+#include "../../Variable.h"
+
 #include "IterativeSolver.h"
-#include "Configuration.h"
-#include "Variable.h"
-#include "Extras.h"
 #include <map>
 
 #define REDUCED 0
@@ -18,6 +19,8 @@ enum class PhysBoundary
 	HeatFixed,
 	HeatFlux
 };
+
+
 
 
 struct FlowSolver
@@ -49,9 +52,9 @@ public:
 	std::map <Side, PhysBoundary> phys_bc;
 	FuncTimer timer;
 	IterativeSolver itsol;
-	Checker check_Ek;
-	StateOut final, temporal;
-	BackUp back;
+	//Checker check_Ek;
+	//StateOut final, temporal;
+	//BackUp back;
 
 	FlowSolver(Configuration config);
 

@@ -1,3 +1,4 @@
+#pragma once
 #include "FlowSolver.h"
 #define TURNOFF 1
 

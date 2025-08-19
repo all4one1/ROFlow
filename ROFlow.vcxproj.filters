@@ -24,46 +24,43 @@
     <ClCompile Include="src\main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\FlowMain.cpp">
+    <ClCompile Include="src\solvers\legacy\FlowMain.cpp">
       <Filter>FlowSolver</Filter>
     </ClCompile>
     <ClCompile Include="FromOuterSparse\SparseMatrix.cpp">
       <Filter>_tools</Filter>
     </ClCompile>
-    <ClCompile Include="src\toolkit.cpp">
-      <Filter>_tools</Filter>
-    </ClCompile>
-    <ClCompile Include="src\FlowProjection.cpp">
+    <ClCompile Include="src\solvers\legacy\FlowProjection.cpp">
       <Filter>FlowSolver</Filter>
     </ClCompile>
-    <ClCompile Include="src\FlowSimple.cpp">
+    <ClCompile Include="src\solvers\legacy\FlowSimple.cpp">
       <Filter>FlowSolver</Filter>
     </ClCompile>
-    <ClCompile Include="src\FlowHeat.cpp">
+    <ClCompile Include="src\solvers\legacy\FlowHeat.cpp">
       <Filter>FlowSolver</Filter>
     </ClCompile>
-    <ClCompile Include="src\FlowTest.cpp">
+    <ClCompile Include="src\solvers\legacy\FlowTest.cpp">
       <Filter>FlowSolver</Filter>
     </ClCompile>
-    <ClCompile Include="src\form_matrix_and_rhs.cpp">
+    <ClCompile Include="src\solvers\legacy\form_matrix_and_rhs.cpp">
       <Filter>FlowSolver</Filter>
     </ClCompile>
-    <ClCompile Include="src\StreamFunction.cpp">
+    <ClCompile Include="src\solvers\legacy\StreamFunction.cpp">
       <Filter>FlowSolver</Filter>
     </ClCompile>
-    <ClCompile Include="src\FlowVibrations.cpp">
+    <ClCompile Include="src\solvers\legacy\FlowVibrations.cpp">
       <Filter>FlowSolver</Filter>
     </ClCompile>
     <ClCompile Include="FromOuterSparse\SparseMatrix_IO.cpp">
       <Filter>_tools</Filter>
     </ClCompile>
+    <ClCompile Include="src\solvers\SIMPLE\Simple_v1.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="src\FlowSolver.h">
+    <ClInclude Include="src\solvers\legacy\FlowSolver.h">
       <Filter>FlowSolver</Filter>
-    </ClInclude>
-    <ClInclude Include="src\toolkit.h">
-      <Filter>_tools</Filter>
     </ClInclude>
     <ClInclude Include="FromOuterSparse\SparseMatrix.h">
       <Filter>_tools</Filter>
@@ -74,11 +71,29 @@
     <ClInclude Include="src\Variable.h">
       <Filter>FlowSolver</Filter>
     </ClInclude>
-    <ClInclude Include="src\IterativeSolver.h">
+    <ClInclude Include="src\solvers\legacy\IterativeSolver.h">
       <Filter>FlowSolver</Filter>
     </ClInclude>
-    <ClInclude Include="src\Extras.h">
-      <Filter>FlowSolver</Filter>
+    <ClInclude Include="src\tools\types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\tools\common_tools.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\tools\project_tools.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\newvar.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\solvers\SIMPLE\Simple_v1.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\solvers\MatrixMaker.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="src\solvers\slau.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

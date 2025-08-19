@@ -1,8 +1,8 @@
 #pragma once
 #include <iostream>
 #include <fstream>
-#include "toolkit.h"
 #include <map>
+
 
 enum class Dimension
 {
@@ -30,6 +30,9 @@ enum class MathBoundary
 	Inlet,
 	Outlet
 };
+
+#define print(message) {std::cout << " (Line #" << __LINE__ << "): " << message << std::endl;}
+
 
 
 //think of it in the framework of the finite volume approximation
@@ -294,7 +297,6 @@ struct Boundary
 				}
 			}
 		}
-		MYERROR("type operator()");
 		return NAN;
 	}
 	double get_value_from_deriv(Side side, int i = 0, int j = 0, int k = 0)
@@ -302,7 +304,7 @@ struct Boundary
 		if (b[side].type == MathBoundary::Neumann)
 			return retrieve_from_deriv(side, GETVALUE(i, j, k));
 		else
-			MYERROR("incorrect bc type");
+			cout << "incorrect bc type" << endl;
 	}
 	double get_fixed_value(Side side)
 	{
@@ -312,7 +314,6 @@ struct Boundary
 		else 
 		{
 			print("incorrect bc type");
-			MYERROR("incorrect bc type");
 		}
 	}
 
@@ -322,7 +323,277 @@ struct Boundary
 	}
 };
 
-
+//
+//struct Boundary
+//{
+//	struct One
+//	{
+//		double value;
+//		double sign;
+//		double h;
+//		bool shifted = false;
+//		MathBoundary type;
+//		One(double v = 0, double s = 0, double H = 0, MathBoundary t = MathBoundary::Neumann)
+//			: value(v), sign(s), h(H), type(t) {
+//		}
+//
+//	};
+//	std::map<Side, One> b;
+//	int dim = 1;
+//	double* v = nullptr;
+//	int nx, ny, nz, off, off2;
+//
+//	Boundary(MathBoundary def_type = MathBoundary::Neumann, double def_value = 0.0,
+//		double hx = 0, double hy = 0, double hz = 0)
+//	{
+//		b[Side::west] = One(def_value, -1, hx, def_type);
+//		b[Side::east] = One(def_value, +1, hx, def_type);
+//		b[Side::south] = One(def_value, -1, hy, def_type);
+//		b[Side::north] = One(def_value, +1, hy, def_type);
+//		b[Side::front] = One(def_value, -1, hz, def_type);
+//		b[Side::back] = One(def_value, +1, hz, def_type);
+//		nx = ny = nz = off = off2 = 0;
+//	}
+//	void shifted_on(Side s)
+//	{
+//		b[s].shifted = true;
+//	}
+//
+//	void bind_with_field(double* p, int nx_, int ny_, int nz_, int off_, int off2_)
+//	{
+//		v = p;
+//		nx = nx_;
+//		ny = ny_;
+//		nz = nz_;
+//		off = off_;
+//		off2 = off2_;
+//	}
+//	auto iterator(Side side)
+//	{
+//		return &b.find(side)->second;
+//	}
+//	MathBoundary type(Side side)
+//	{
+//		return b[side].type;
+//	}
+//
+//	void set_boundary(Side side, MathBoundary bc, double v = 0.0, double h = 0.0)
+//	{
+//		auto it = iterator(side);
+//		it->type = bc;
+//		if (v != 0.0) it->value = v;
+//		if (h != 0.0) it->h = h;
+//	}
+//	void set_period_pair(Side s1, Side s2)
+//	{
+//		bool found = false;
+//
+//		auto check = [this, &found, &s1, &s2](bool ok)
+//		{
+//			if (ok)
+//			{
+//				double h1 = b[s1].h, h2 = b[s2].h;
+//				double h = h1 + h2;
+//				set_boundary(s1, MathBoundary::periodic, 0.0, h);
+//				set_boundary(s2, MathBoundary::periodic, 0.0, h);
+//				found = true;
+//			}
+//		};
+//
+//		check(s1 == Side::west && s2 == Side::east);
+//		check(s2 == Side::west && s1 == Side::east);
+//
+//		check(s1 == Side::south && s2 == Side::north);
+//		check(s2 == Side::south && s1 == Side::north);
+//
+//		check(s1 == Side::front && s2 == Side::back);
+//		check(s2 == Side::front && s1 == Side::back);
+//
+//		if (!found) std::cout << "not adequate pair" << std::endl;
+//	}
+//
+//	void set_steps(double hx_, double hy_ = 0, double hz_ = 0)
+//	{
+//		b[Side::west].h = b[Side::east].h = hx_;
+//		b[Side::south].h = b[Side::north].h = hy_;
+//		b[Side::front].h = b[Side::back].h = hz_;
+//	}
+//	double retrieve_from_deriv(Side side, double f)
+//	{
+//		auto it = iterator(side);
+//		return f + it->sign * it->h * it->value;
+//	}
+//	double normal_deriv(Side side, int i = 0, int j = 0, int k = 0)
+//	{
+//		auto it = iterator(side);
+//		if (it->type == MathBoundary::Neumann)
+//			return it->value;
+//		if (it->type == MathBoundary::periodic)
+//		{
+//			if (it->shifted == false)
+//			{
+//				switch (side)
+//				{
+//				case Side::west:
+//					return (GETVALUE(0, j, k) - GETVALUE(nx - 1, j, k)) / (it->h);
+//					break;
+//				case Side::east:
+//					return (GETVALUE(0, j, k) - GETVALUE(nx - 1, j, k)) / (it->h);
+//					break;
+//				case Side::south:
+//					return (GETVALUE(i, 0, k) - GETVALUE(i, ny - 1, k)) / (it->h);
+//					break;
+//				case Side::north:
+//					return (GETVALUE(i, 0, k) - GETVALUE(i, ny - 1, k)) / (it->h);
+//					break;
+//				case Side::front:
+//					return (GETVALUE(i, j, 0) - GETVALUE(i, j, nz - 1)) / (it->h);
+//					break;
+//				case Side::back:
+//					return (GETVALUE(i, j, 0) - GETVALUE(i, j, nz - 1)) / (it->h);
+//					break;
+//				default:
+//					break;
+//				}
+//			}
+//			else
+//			{
+//				switch (side)
+//				{
+//				case Side::west:
+//					return (GETVALUE(0, j, k) - GETVALUE(nx - 1, j, k)) / (it->h);
+//					break;
+//				case Side::east:
+//					return (GETVALUE(1, j, k) - GETVALUE(nx, j, k)) / (it->h);
+//					break;
+//				case Side::south:
+//					return (GETVALUE(i, 0, k) - GETVALUE(i, ny - 1, k)) / (it->h);
+//					break;
+//				case Side::north:
+//					return (GETVALUE(i, 1, k) - GETVALUE(i, ny, k)) / (it->h);
+//					break;
+//				case Side::front:
+//					return (GETVALUE(i, j, 0) - GETVALUE(i, j, nz - 1)) / (it->h);
+//					break;
+//				case Side::back:
+//					return (GETVALUE(i, j, 1) - GETVALUE(i, j, nz)) / (it->h);
+//					break;
+//				default:
+//					break;
+//				}
+//			}
+//		}
+//
+//		return it->sign * (it->value - GETVALUE(i, j, k)) / (it->h);
+//	}
+//
+//	double normal_difference(Side side, int i = 0, int j = 0, int k = 0)
+//	{
+//		return normal_deriv(side, i, j, k) * b[side].h;
+//	}
+//
+//	double normal_deriv_oriented(Side side, int i = 0, int j = 0, int k = 0)
+//	{
+//		auto it = iterator(side);
+//		return normal_deriv(side, i, j, k) * it->sign;
+//	}
+//	void show_boundary(Side side)
+//	{
+//		std::cout << std::endl << "Boundary: " << std::endl;
+//		auto it = iterator(side);
+//		std::cout << "side: " << static_cast<int>(side) << ", ";
+//		std::cout << "value: " << it->value << ", ";
+//		std::cout << "type: " << static_cast<int>(it->type) << ", ";
+//		std::cout << "sign: " << static_cast<int>(it->sign) << std::endl;
+//		std::cout << "step,h: " << it->h << ", dim: " << dim << std::endl;
+//	}
+//	double operator()(Side side, int i = 0, int j = 0, int k = 0)
+//	{
+//		auto it = iterator(side);
+//		if (it->type == MathBoundary::Neumann)
+//			return retrieve_from_deriv(side, GETVALUE(i, j, k));
+//		else if (it->type == MathBoundary::Dirichlet)
+//			return b[side].value;
+//		else if (it->type == MathBoundary::periodic)
+//		{
+//			if (it->shifted == false)
+//			{
+//				switch (side)
+//				{
+//				case Side::west:
+//					return 0.5 * (GETVALUE(0, j, k) + GETVALUE(nx - 1, j, k));
+//					break;
+//				case Side::east:
+//					return 0.5 * (GETVALUE(0, j, k) + GETVALUE(nx - 1, j, k));
+//					break;
+//				case Side::south:
+//					return 0.5 * (GETVALUE(i, 0, k) + GETVALUE(i, ny - 1, k));
+//					break;
+//				case Side::north:
+//					return 0.5 * (GETVALUE(i, 0, k) + GETVALUE(i, ny - 1, k));
+//					break;
+//				case Side::front:
+//					return 0.5 * (GETVALUE(i, j, 0) + GETVALUE(i, j, nz - 1));
+//					break;
+//				case Side::back:
+//					return 0.5 * (GETVALUE(i, j, 0) + GETVALUE(i, j, nz - 1));
+//					break;
+//				default:
+//					break;
+//				}
+//			}
+//			else
+//			{
+//				switch (side)
+//				{
+//				case Side::west:
+//					return 0.5 * (GETVALUE(0, j, k) + GETVALUE(nx - 1, j, k));
+//					break;
+//				case Side::east:
+//					return 0.5 * (GETVALUE(1, j, k) + GETVALUE(nx, j, k));
+//					break;
+//				case Side::south:
+//					return 0.5 * (GETVALUE(i, 0, k) + GETVALUE(i, ny - 1, k));
+//					break;
+//				case Side::north:
+//					return 0.5 * (GETVALUE(i, 1, k) + GETVALUE(i, ny, k));
+//					break;
+//				case Side::front:
+//					return 0.5 * (GETVALUE(i, j, 0) + GETVALUE(i, j, nz - 1));
+//					break;
+//				case Side::back:
+//					return 0.5 * (GETVALUE(i, j, 1) + GETVALUE(i, j, nz));
+//					break;
+//				default:
+//					break;
+//				}
+//			}
+//		}
+//		return NAN;
+//	}
+//	double get_value_from_deriv(Side side, int i = 0, int j = 0, int k = 0)
+//	{
+//		if (b[side].type == MathBoundary::Neumann)
+//			return retrieve_from_deriv(side, GETVALUE(i, j, k));
+//		else
+//			cout << "incorrect bc type" << endl;
+//	}
+//	double get_fixed_value(Side side)
+//	{
+//		if (b[side].type == MathBoundary::Dirichlet)
+//			return b[side].value;
+//		//else if (b[side].type == MathBoundary::Periodic)
+//		else
+//		{
+//			cout << "incorrect bc type" << endl;
+//		}
+//	}
+//
+//	One& operator[](Side side)
+//	{
+//		return b[side];
+//	}
+//};
 
 
 struct ScalarVariable
@@ -675,7 +946,7 @@ struct ScalarVariable
 			return GETFZ(k, k + 1);
 			break;
 		default:
-			MYERROR("get at side");
+			cout << "get at side" << endl;
 			break;
 		}
 	}
@@ -1005,8 +1276,6 @@ struct ScalarVariable
 			cout << "Back: "; boundary.show_boundary(Side::back);
 		}
 	}
-
-	
 };
 
 
@@ -1847,7 +2116,7 @@ struct Velocity : public ScalarVariable
 				return GETDX(i + 1, i);
 			}
 		}
-		MYERROR("Velocity");
+		cout << "Velocity" << endl;
 		return 0.0;
 	}
 	double get_dy_for_vx_cell(Side side, int i, int j, int k = 0)
@@ -1870,7 +2139,7 @@ struct Velocity : public ScalarVariable
 					return GETDY(j + 1, j);
 			}
 		}
-		MYERROR("Velocity");
+		cout << "Velocity" << endl;
 		return 0.0;
 	}
 	double get_dz_for_vx_cell(Side side, int i, int j, int k)
@@ -1892,7 +2161,7 @@ struct Velocity : public ScalarVariable
 					return GETDZ(k + 1, k);
 			}
 		}
-		MYERROR("Velocity");
+		cout << "Velocity" << endl;
 		return 0.0;
 	}
 
@@ -1914,7 +2183,7 @@ struct Velocity : public ScalarVariable
 				else
 					return GETDX(i + 1, i);
 			}
-			MYERROR("Velocity");
+			cout << "Velocity" << endl;
 			return 0.0;
 		}
 	}
@@ -1928,7 +2197,7 @@ struct Velocity : public ScalarVariable
 			if (side == Side::north)
 				return GETDY(j + 1, j);
 		}
-		MYERROR("Velocity");
+		cout << "Velocity" << endl;
 		return 0.0;
 	}
 	double get_dz_for_vy_cell(Side side, int i, int j, int k)
@@ -1950,7 +2219,7 @@ struct Velocity : public ScalarVariable
 					return GETDZ(k + 1, k);
 			}
 		}
-		MYERROR("Velocity");
+		cout << "Velocity" << endl;
 		return 0.0;
 	}
 
@@ -1972,7 +2241,7 @@ struct Velocity : public ScalarVariable
 				else
 					return GETDX(i + 1, i);
 			}
-			MYERROR("Velocity");
+			cout << "Velocity" << endl;
 			return 0.0;
 		}
 	}
@@ -1996,7 +2265,7 @@ struct Velocity : public ScalarVariable
 					return GETDY(j + 1, j);
 			}
 		}
-		MYERROR("Velocity");
+		cout << "Velocity" << endl;
 		return 0.0;
 	}
 	double get_dz_for_vz_cell(Side side, int i, int j, int k)

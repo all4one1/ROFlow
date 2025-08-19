@@ -1,6 +1,5 @@
 #pragma once
 #include <random>
-#include "toolkit.h"
 #include <iostream>
 
 struct Configuration
@@ -54,12 +53,6 @@ struct Configuration
 			Sz = 0.0;
 			dV = hx;
 		}
-
-		alloc(&vx, N);
-		alloc(&vy, N);
-		alloc(&vz, N);
-		alloc(&p, N);
-		alloc(&T, N);
 	}
 
 
